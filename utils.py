@@ -1,5 +1,4 @@
 import tensorflow as tf
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
@@ -19,10 +18,7 @@ def plot_slice(scan, batch_sample, z):
 def plot_animated_volume(scan):
     "Plot an animation along the z axis"
     fig = plt.figure()
-    ax = plt.axes()
-
     img = plt.imshow(scan[0, 0, :, :, 0], cmap="gray")
-
     plt.close()  # to prevent displaying a plot below the video
 
     def animate(i):
