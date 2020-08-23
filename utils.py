@@ -4,32 +4,35 @@ from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
 
 
-def plot_slice(scan, batch_sample, z):
+def plot_slice(scan, batch_index, z_index, ax=None):
     """
     Plot a slice of a 3D scan.
 
-    scan must be [batch_size, z, y, x, channels]
+    scan must be [batch_size, z, y, x, channels].
+    ax is the matplotlib object from which the imshow method will be called.
     """
     if scan.dtype != tf.float32:
         scan = tf.cast(scan, tf.float32)
-    plt.imshow(scan[batch_sample, z, :, :, 0], cmap="gray")
+    if not ax:
+        ax = plt
+    return ax.imshow(scan[batch_index, z_index, :, :, 0], cmap="gray")
 
 
-def plot_animated_volume(scan, batch_sample):
+def plot_animated_volume(scan, batch_index):
     """
     Plot an animation along the z axis.
-    
+
     scan must be [batch_size, z, y, x, channels]
     """
     if scan.dtype != tf.float32:
         scan = tf.cast(scan, tf.float32)
 
     fig = plt.figure()
-    img = plt.imshow(scan[batch_sample, 0, :, :, 0], cmap="gray")
+    img = plt.imshow(scan[batch_index, 0, :, :, 0], cmap="gray")
     plt.close()  # to prevent displaying a plot below the video
 
     def animate(i):
-        img.set_array(scan[batch_sample, i, :, :, 0])
+        img.set_array(scan[batch_index, i, :, :, 0])
         return [img]
 
     anim = FuncAnimation(
