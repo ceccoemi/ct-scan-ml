@@ -6,15 +6,18 @@ class EarlyStopping:
         self.patience = patience
         self.delta = delta
         self.best_value = np.inf
-        self.counter = 0
+        self.not_improving_epochs = 0
         self.early_stop = False
 
-    def __call__(self, value):
+    def update(self, value):
         if value + self.delta >= self.best_value:
-            if self.counter == self.patience:
+            if self.not_improving_epochs == self.patience:
                 self.early_stop = True
             else:
-                self.counter += 1
+                self.not_improving_epochs += 1
         else:
-            self.counter = 0
+            self.not_improving_epochs = 0
             self.best_value = value
+
+    def __call__(self, value):
+        self.update(value)
