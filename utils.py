@@ -18,7 +18,7 @@ def plot_slice(scan, batch_index, z_index, ax=None):
     return ax.imshow(scan[batch_index, z_index, :, :, 0], cmap="gray")
 
 
-def plot_animated_volume(scan, batch_index):
+def plot_animated_volume(scan, batch_index, fps=30):
     """
     Plot an animation along the z axis.
 
@@ -36,6 +36,6 @@ def plot_animated_volume(scan, batch_index):
         return [img]
 
     anim = FuncAnimation(
-        fig, animate, frames=scan.shape[1], interval=100, blit=True
+        fig, animate, frames=scan.shape[1], interval=1000 / fps, blit=True,
     )
     return HTML(anim.to_html5_video())
