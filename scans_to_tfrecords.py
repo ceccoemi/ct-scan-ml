@@ -2,10 +2,18 @@ import argparse
 from pathlib import Path
 
 import numpy as np
+from scipy import ndimage
 import tensorflow as tf
 from tqdm import tqdm
 import nrrd
 from pydicom import dcmread
+
+
+def preprocess_scan(scan, downsample):
+    "Apply some preprocessing to the image"
+    if downsample != 1:
+        scan = ndimage.zoom(scan, 1 / downsample)
+    return scan
 
 
 def scan_to_example(scan):
@@ -34,7 +42,7 @@ def _split_into_subsequences(data, s):
     return [data[x : x + s] for x in range(0, len(data), s)]
 
 
-def convert_nrrd(path_glob, output_dir_name):
+def convert_nrrd(path_glob, output_dir_name, downsample):
     nrrd_files = [str(f) for f in Path(".").glob(path_glob)]
     nrrd_files = _split_into_subsequences(nrrd_files, 10)
     output_dir = Path(output_dir_name)
@@ -47,11 +55,12 @@ def convert_nrrd(path_glob, output_dir_name):
             for fname in chunk:
                 scan, _ = nrrd.read(fname, index_order="C")
                 scan = scan.astype(np.float32)
+                scan = preprocess_scan(scan, downsample)
                 example = scan_to_example(scan)
                 writer.write(example.SerializeToString())
 
 
-def convert_dicom(path_glob, output_dir_name):
+def convert_dicom(path_glob, output_dir_name, downsample):
     dcm_directories = list(Path(".").glob(path_glob))
     dcm_directories = _split_into_subsequences(dcm_directories, 10)
     output_dir = Path(output_dir_name)
@@ -74,6 +83,7 @@ def convert_dicom(path_glob, output_dir_name):
                     ):
                         scan = np.stack([s.pixel_array for s in dcm_slices])
                         scan = scan.astype(np.float32)
+                        scan = preprocess_scan(scan, downsample)
                         example = scan_to_example(scan)
                         writer.write(example.SerializeToString())
 
@@ -92,6 +102,9 @@ if __name__ == "__main__":
         help="Glob that identifies all the nrrd/dicom files to convert (must be inside quotes)",
     )
     parser.add_argument(
+        "-d", "--downsample", type=float, default=1, help="Downscaling factor"
+    )
+    parser.add_argument(
         "output_dir",
         help="Name of the directory where to store the tfrecords files",
     )
@@ -99,6 +112,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.file_type == "nrrd":
-        convert_nrrd(args.path_glob, args.output_dir)
+        convert_nrrd(args.path_glob, args.output_dir, args.downsample)
     if args.file_type == "dicom":
-        convert_dicom(args.path_glob, args.output_dir)
+        convert_dicom(args.path_glob, args.output_dir, args.downsample)
