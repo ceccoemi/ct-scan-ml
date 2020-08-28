@@ -16,5 +16,4 @@ def example_to_tensor(example):
     scan = tf.reshape(
         scan_1d, (scan_features["z"], scan_features["y"], scan_features["x"])
     )
-    scan = tf.expand_dims(scan, axis=-1)  # add the channel dimension
     return scan
