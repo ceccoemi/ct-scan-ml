@@ -1,6 +1,6 @@
 from tensorflow import keras
 
-from config import input_shape
+from config import input_shape, batched_input_shape
 
 
 def conv_block(filters, kernel_size=3, dropout_rate=0.1, pool_size=2):
@@ -13,7 +13,7 @@ def conv_block(filters, kernel_size=3, dropout_rate=0.1, pool_size=2):
     return (
         keras.layers.Conv3D(
             filters=filters,
-            kernel_size=3,
+            kernel_size=kernel_size,
             padding="same",
             kernel_initializer="lecun_normal",
             bias_initializer="lecun_normal",
@@ -56,9 +56,7 @@ def build_autoencoder():
     )
     decoder = keras.models.Sequential(
         [
-            keras.layers.InputLayer(
-                input_shape=encoder.layers[-1].output.shape[1:],
-            ),
+            keras.layers.InputLayer(input_shape=encoder.output_shape[1:],),
             *deconv_block(64),
             *deconv_block(32),
             *deconv_block(16),
@@ -73,5 +71,9 @@ def build_autoencoder():
     # with strategy.scope():
     #    autoencoder = keras.models.Sequential([encoder, decoder])
 
-    autoencoder.build((None, *input_shape))
+    autoencoder.build(batched_input_shape)
+    assert (
+        autoencoder.output_shape == batched_input_shape
+    ), "Autoencoder input and output must have the same shape"
+
     return autoencoder
