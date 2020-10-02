@@ -15,8 +15,6 @@ nrrd_glob = "nrrd-0.25/*.tfrecord"
 # tcia_glob = "tcia-0.25/*.tfrecords"
 # nrrd_glob = "nrrd-0.25/*.tfrecords"
 
-batched_input_shape = (None, *input_shape)
-
 # Hyperparameters
 epochs = 1000
 learning_rate = 0.0005
