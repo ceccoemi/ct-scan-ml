@@ -7,8 +7,8 @@ from config import (
     nrrd_glob,
     batch_size,
     input_shape,
-    validation_size,
-    test_size,
+    validation_num_samples,
+    test_num_samples,
 )
 
 
@@ -47,20 +47,29 @@ def get_datasets():
     ]
 
     dataset = tf.data.TFRecordDataset(tfrecord_fnames)
-    dataset = dataset.map(example_to_tensor)
-    dataset = dataset.map(normalize)
     dataset = dataset.map(
-        lambda x: tf.expand_dims(x, axis=-1)  # add the channel dimension
+        example_to_tensor, num_parallel_calls=tf.data.experimental.AUTOTUNE
     )
-
-    test_dataset = dataset.take(test_size)
+    dataset = dataset.map(
+        normalize, num_parallel_calls=tf.data.experimental.AUTOTUNE
+    )
+    dataset = dataset.map(
+        lambda x: tf.expand_dims(x, axis=-1),  # add the channel axis
+        num_parallel_calls=tf.data.experimental.AUTOTUNE,
+    )
+    dataset = dataset.shuffle(buffer_size=32)
+    test_dataset = dataset.take(test_num_samples)
     test_dataset = test_dataset.batch(1)
-    dataset = dataset.skip(test_size)
-    dataset = dataset.padded_batch(
+    dataset = dataset.skip(test_num_samples)
+    val_dataset = dataset.take(validation_num_samples)
+    val_dataset = val_dataset.padded_batch(
         batch_size=batch_size, padded_shapes=input_shape,
     )
-    val_dataset = dataset.take(validation_size)
-    train_dataset = dataset.skip(validation_size)
+    train_dataset = dataset.skip(validation_num_samples)
+    train_dataset = train_dataset.padded_batch(
+        batch_size=batch_size, padded_shapes=input_shape,
+    )
+    train_dataset = train_dataset.cache()  # must be called before shuffle
     train_dataset = train_dataset.shuffle(
         buffer_size=64, reshuffle_each_iteration=True
     )
