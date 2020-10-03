@@ -1,6 +1,15 @@
+from pathlib import Path
+
 import tensorflow as tf
 
-from config import batch_size, input_shape, validation_size, test_size
+from config import (
+    tcia_glob,
+    nrrd_glob,
+    batch_size,
+    input_shape,
+    validation_size,
+    test_size,
+)
 
 
 def example_to_tensor(example):
@@ -28,8 +37,15 @@ def normalize(t):
     return (t - min_value) / (max_value - min_value)
 
 
-def get_datasets(tfrecord_fnames):
+def get_datasets():
     "Return training, validation and test set"
+    data_dir = Path("data")
+    tfrecord_fnames = [
+        str(p)
+        for g in (data_dir.glob(tcia_glob), data_dir.glob(nrrd_glob),)
+        for p in g
+    ]
+
     dataset = tf.data.TFRecordDataset(tfrecord_fnames)
     dataset = dataset.map(example_to_tensor)
     dataset = dataset.map(normalize)

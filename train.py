@@ -1,4 +1,3 @@
-from pathlib import Path
 import datetime
 import argparse
 
@@ -11,8 +10,6 @@ from data import get_datasets
 from model import build_autoencoder
 from config import (
     verbose_training,
-    tcia_glob,
-    nrrd_glob,
     epochs,
     learning_rate,
     patience,
@@ -128,15 +125,8 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    data_dir = Path("data")
-    tfrecord_fnames = [
-        str(p)
-        for g in (data_dir.glob(tcia_glob), data_dir.glob(nrrd_glob),)
-        for p in g
-    ]
-
     with tf.device(f"/device:GPU:{args.gpu}"):
-        train_dataset, val_dataset, _ = get_datasets(tfrecord_fnames)
+        train_dataset, val_dataset, _ = get_datasets()
         model = build_autoencoder()
         loss = keras.losses.MeanSquaredError()
         optimizer = keras.optimizers.Adam(lr=learning_rate)
