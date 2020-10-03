@@ -14,7 +14,7 @@ To convert several nrrd files to a series of tfrecord files with the images down
 
 ## Training
 
-To train a model, first tune the hyperparamenters in `config.py`, then run
+To train a model, first tune the hyperparamenters in `config.py`, configure the model in `model.py` and then run
 
     python train.py
 

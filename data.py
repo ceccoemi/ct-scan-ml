@@ -57,7 +57,7 @@ def get_datasets():
         lambda x: tf.expand_dims(x, axis=-1),  # add the channel axis
         num_parallel_calls=tf.data.experimental.AUTOTUNE,
     )
-    dataset = dataset.shuffle(buffer_size=32)
+    dataset = dataset.shuffle(buffer_size=32, reshuffle_each_iteration=False)
     test_dataset = dataset.take(test_num_samples)
     test_dataset = test_dataset.batch(1)
     dataset = dataset.skip(test_num_samples)
