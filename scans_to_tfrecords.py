@@ -42,6 +42,15 @@ def _split_into_subsequences(data, s):
     return [data[x : x + s] for x in range(0, len(data), s)]
 
 
+def preprocess_and_save_scan(writer, scan, downsample):
+    scan = scan.astype(np.float32)
+    scan = preprocess_scan(scan, downsample)
+    if scan.shape[0] < 1:
+        return
+    example = scan_to_example(scan)
+    writer.write(example.SerializeToString())
+
+
 def convert_nrrd(path_glob, output_dir_name, downsample):
     nrrd_files = [str(f) for f in Path(".").glob(path_glob)]
     nrrd_files = _split_into_subsequences(nrrd_files, 10)
@@ -54,10 +63,7 @@ def convert_nrrd(path_glob, output_dir_name, downsample):
         with tf.io.TFRecordWriter(tfrecord_fname) as writer:
             for fname in chunk:
                 scan, _ = nrrd.read(fname, index_order="C")
-                scan = scan.astype(np.float32)
-                scan = preprocess_scan(scan, downsample)
-                example = scan_to_example(scan)
-                writer.write(example.SerializeToString())
+                preprocess_and_save_scan(writer, scan, downsample)
 
 
 def convert_dicom(path_glob, output_dir_name, downsample):
@@ -82,10 +88,7 @@ def convert_dicom(path_glob, output_dir_name, downsample):
                         s.pixel_array.shape == (512, 512) for s in dcm_slices
                     ):
                         scan = np.stack([s.pixel_array for s in dcm_slices])
-                        scan = scan.astype(np.float32)
-                        scan = preprocess_scan(scan, downsample)
-                        example = scan_to_example(scan)
-                        writer.write(example.SerializeToString())
+                        preprocess_and_save_scan(writer, scan, downsample)
 
 
 if __name__ == "__main__":
