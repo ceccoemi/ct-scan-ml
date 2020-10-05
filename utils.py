@@ -4,7 +4,7 @@ from matplotlib.animation import FuncAnimation
 from IPython.display import HTML
 
 
-def plot_slice(scan, batch_index, z_index, ax=None):
+def plot_slice(scan, batch_index=0, z_index=0, ax=None):
     """
     Plot a slice of a 3D scan.
 
@@ -18,7 +18,7 @@ def plot_slice(scan, batch_index, z_index, ax=None):
     return ax.imshow(scan[batch_index, z_index, :, :, 0], cmap="gray")
 
 
-def plot_animated_volume(scan, batch_index, fps=30):
+def plot_animated_volume(scan, batch_index=0, fps=30):
     """
     Plot an animation along the z axis.
 

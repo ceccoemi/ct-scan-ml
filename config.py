@@ -20,5 +20,5 @@ epochs = 1000
 learning_rate = 0.0005
 patience = 20
 batch_size = 2
-test_size = 4  # number of images
-validation_size = 4  # number of batches
+test_num_samples = 10
+validation_num_samples = 10  # it should be divisible by batch size

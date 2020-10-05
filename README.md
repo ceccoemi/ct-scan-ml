@@ -12,12 +12,12 @@ To convert several nrrd files to a series of tfrecord files with the images down
 
     python scans_to_tfrecords.py nrrd "../directory_dati/Pazienti_*/*/[2-9]_*.nrrd" ./data/nrrd-0.5 --downsample=2
 
-## Training a model
+## Training
 
-To launch a training, first setup the hyperparameters in `config.py`, then run:
+To train a model, first tune the hyperparamenters in `config.py`, configure the model in `model.py` and then run
 
     python train.py
 
-If you are in a multi-GPU system, you can choose the GPU where to run the training process with
+If you are in a multi-GPU system, to execute the training process in a specific GPU run
 
     python train.py --gpu=<GPU-id>

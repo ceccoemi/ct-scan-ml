@@ -3,75 +3,68 @@ from tensorflow import keras
 from config import input_shape
 
 
-def conv_block(filters, kernel_size=3, dropout_rate=0.1, pool_size=2):
+def conv_block(x, filters, kernel_size=3, dropout_rate=0.1, pool_size=2):
     """
-    - Convolution 3D
-    - Selu activation
-    - Dropout
+    - Convolution 3D (with selu)
+    - AlphaDropout
     - Max pool 3D
+
+    x is the input layer using the Keras Functional API
     """
-    return (
-        keras.layers.Conv3D(
-            filters=filters,
-            kernel_size=3,
-            padding="same",
-            kernel_initializer="lecun_normal",
-            bias_initializer="lecun_normal",
-        ),
-        keras.layers.Activation("selu"),
-        keras.layers.AlphaDropout(dropout_rate),
-        keras.layers.MaxPool3D(pool_size=pool_size),
-    )
+    x = keras.layers.Conv3D(
+        filters=filters,
+        kernel_size=kernel_size,
+        padding="same",
+        kernel_initializer="lecun_normal",
+        bias_initializer="lecun_normal",
+        activation="selu",
+    )(x)
+    x = keras.layers.AlphaDropout(dropout_rate)(x)
+    x = keras.layers.MaxPool3D(pool_size=pool_size)(x)
+    return x
 
 
-def deconv_block(filters, kernel_size=3, dropout_rate=0.1, pool_size=2):
+def deconv_block(x, filters, kernel_size=3, dropout_rate=0.1, pool_size=2):
     """
     - Up sampling 3D
-    - Convolution 3D
-    - Selu activation
-    - Dropout
+    - Convolution 3D (with selu)
+    - AlphaDropout
+
+    x is the input layer using the Keras Functional  API
     """
-    return (
-        keras.layers.UpSampling3D(size=pool_size),
-        keras.layers.Conv3D(
-            filters=filters,
-            kernel_size=kernel_size,
-            padding="same",
-            kernel_initializer="lecun_normal",
-            bias_initializer="lecun_normal",
-        ),
-        keras.layers.Activation("selu"),
-        keras.layers.AlphaDropout(dropout_rate),
-    )
+    x = keras.layers.UpSampling3D(size=pool_size)(x)
+    x = keras.layers.Conv3D(
+        filters=filters,
+        kernel_size=kernel_size,
+        padding="same",
+        kernel_initializer="lecun_normal",
+        bias_initializer="lecun_normal",
+        activation="selu",
+    )(x)
+    x = keras.layers.AlphaDropout(dropout_rate)(x)
+    return x
 
 
 def build_autoencoder():
-    encoder = keras.Sequential(
-        [
-            keras.layers.InputLayer(input_shape),
-            *conv_block(filters=16),
-            *conv_block(filters=32),
-            *conv_block(filters=64),
-        ]
-    )
-    decoder = keras.models.Sequential(
-        [
-            keras.layers.InputLayer(
-                input_shape=encoder.layers[-1].output.shape[1:],
-            ),
-            *deconv_block(64),
-            *deconv_block(32),
-            *deconv_block(16),
-            keras.layers.Dense(1),
-            keras.layers.Activation("sigmoid"),
-        ]
-    )
-    autoencoder = keras.models.Sequential([encoder, decoder])
+    encoder_inputs = keras.Input(input_shape)
+    x = conv_block(encoder_inputs, filters=16)
+    x = conv_block(x, filters=64)
+    encoder_outputs = conv_block(x, filters=128)
+    encoder = keras.Model(encoder_inputs, encoder_outputs, name="encoder")
 
-    # strategy = tf.distribute.MirroredStrategy()
-    # print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
-    # with strategy.scope():
-    #    autoencoder = keras.models.Sequential([encoder, decoder])
+    decoder_inputs = keras.Input(encoder.output_shape[1:])
+    x = deconv_block(decoder_inputs, filters=128)
+    x = deconv_block(x, filters=64)
+    x = deconv_block(x, filters=16)
+    decoder_outputs = keras.layers.Dense(1, activation="sigmoid")(x)
+    decoder = keras.Model(decoder_inputs, decoder_outputs, name="decoder")
 
-    autoencoder.build((None, *input_shape))
+    autoencoder = keras.models.Sequential(
+        [encoder, decoder], name="autoencoder"
+    )
+
+    assert (
+        autoencoder.output_shape[1:] == input_shape
+    ), "Autoencoder input and output must have the same shape"
+
     return autoencoder
