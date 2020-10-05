@@ -68,7 +68,9 @@ def train(model, loss, optimizer, train_dataset, val_dataset):
             with writer.as_default():
                 for grad, param in zip(gradients, model.trainable_variables):
                     tf.summary.histogram(param.name, param, step=epoch)
-                    # tf.summary.histogram(param.name + "/grad", grad, buckets=1, step=epoch)
+                    tf.summary.histogram(
+                        param.name + "/grad", grad, buckets=1, step=epoch
+                    )
 
         train_loss_mean = train_loss_metric.result()
         with writer.as_default():

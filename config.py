@@ -17,7 +17,7 @@ nrrd_glob = "nrrd-0.25/*.tfrecord"
 
 # Hyperparameters
 epochs = 1000
-learning_rate = 0.0005
+learning_rate = 0.0001
 patience = 20
 batch_size = 2
 test_num_samples = 10
