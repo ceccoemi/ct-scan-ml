@@ -10,6 +10,7 @@ from data import get_datasets
 from model import build_autoencoder
 from config import (
     verbose_training,
+    seed,
     epochs,
     learning_rate,
     patience,
@@ -69,7 +70,7 @@ def train(model, loss, optimizer, train_dataset, val_dataset):
                 for grad, param in zip(gradients, model.trainable_variables):
                     tf.summary.histogram(param.name, param, step=epoch)
                     tf.summary.histogram(
-                        param.name + "/grad", grad, buckets=1, step=epoch
+                        param.name + "/grad", grad, step=epoch
                     )
 
         train_loss_mean = train_loss_metric.result()
@@ -115,6 +116,7 @@ def train(model, loss, optimizer, train_dataset, val_dataset):
             f"batch size = {batch_size}; "
             f"patience = {patience}; "
             f"learning rate = {learning_rate}; "
+            f"seed = {seed}; "
             f"training time = {training_time}",
             step=0,
         )

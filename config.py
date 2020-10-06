@@ -1,4 +1,5 @@
 verbose_training = False
+seed = 5
 
 # downscale 4
 input_shape = (248, 128, 128, 1)
