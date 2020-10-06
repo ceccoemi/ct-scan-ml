@@ -13,6 +13,7 @@ def preprocess_scan(scan, downsample):
     "Apply some preprocessing to the image"
     if downsample != 1:
         scan = ndimage.zoom(scan, 1 / downsample)
+    scan = scan.astype(np.float32)
     return scan
 
 
@@ -42,9 +43,12 @@ def _split_into_subsequences(data, s):
     return [data[x : x + s] for x in range(0, len(data), s)]
 
 
-def preprocess_and_save_scan(writer, scan, downsample):
-    scan = scan.astype(np.float32)
-    scan = preprocess_scan(scan, downsample)
+def save_scan(writer, scan):
+    """Serialize the scan in a tfrecord file.
+
+    If the scan is not e regular volume (the first axis
+    has length 0) then return doing nothing.
+    """
     if scan.shape[0] < 1:
         return
     example = scan_to_example(scan)
@@ -63,7 +67,8 @@ def convert_nrrd(path_glob, output_dir_name, downsample):
         with tf.io.TFRecordWriter(tfrecord_fname) as writer:
             for fname in chunk:
                 scan, _ = nrrd.read(fname, index_order="C")
-                preprocess_and_save_scan(writer, scan, downsample)
+                scan = preprocess_scan(scan, downsample)
+                save_scan(writer, scan)
 
 
 def convert_dicom(path_glob, output_dir_name, downsample):
@@ -88,7 +93,8 @@ def convert_dicom(path_glob, output_dir_name, downsample):
                         s.pixel_array.shape == (512, 512) for s in dcm_slices
                     ):
                         scan = np.stack([s.pixel_array for s in dcm_slices])
-                        preprocess_and_save_scan(writer, scan, downsample)
+                        scan = preprocess_scan(scan, downsample)
+                        save_scan(writer, scan)
 
 
 if __name__ == "__main__":
