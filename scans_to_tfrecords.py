@@ -7,6 +7,7 @@ import tensorflow as tf
 from tqdm import tqdm
 import nrrd
 from pydicom import dcmread
+import nibabel as nib
 
 
 def preprocess_scan(scan, downsample):
@@ -32,12 +33,12 @@ def scan_to_example(scan):
     return tf.train.Example(features=tf.train.Features(feature=scan_features))
 
 
-def _split_into_subsequences(data, s):
+def split_into_subsequences(data, s):
     """
-    Split the input sequence data into sublist of size s.
+    Split the input sequence into sublist of size s.
 
     >>> s = "abcdefg"
-    >>> _split_into_subsequences(s, 2)
+    >>> split_into_subsequences(s, 2)
     ['ab', 'cd', 'ef', 'g']
     """
     return [data[x : x + s] for x in range(0, len(data), s)]
@@ -57,7 +58,7 @@ def save_scan(writer, scan):
 
 def convert_nrrd(path_glob, output_dir_name, downsample):
     nrrd_files = [str(f) for f in Path(".").glob(path_glob)]
-    nrrd_files = _split_into_subsequences(nrrd_files, 10)
+    nrrd_files = split_into_subsequences(nrrd_files, 10)
     output_dir = Path(output_dir_name)
     output_dir.mkdir()
     for i, chunk in tqdm(
@@ -73,7 +74,7 @@ def convert_nrrd(path_glob, output_dir_name, downsample):
 
 def convert_dicom(path_glob, output_dir_name, downsample):
     dcm_directories = list(Path(".").glob(path_glob))
-    dcm_directories = _split_into_subsequences(dcm_directories, 10)
+    dcm_directories = split_into_subsequences(dcm_directories, 10)
     output_dir = Path(output_dir_name)
     output_dir.mkdir()
     for i, chunk in tqdm(
@@ -97,6 +98,23 @@ def convert_dicom(path_glob, output_dir_name, downsample):
                         save_scan(writer, scan)
 
 
+def convert_nifti(path_glob, output_dir_name, downsample):
+    nrrd_files = [str(f) for f in Path(".").glob(path_glob)]
+    nrrd_files = split_into_subsequences(nrrd_files, 10)
+    output_dir = Path(output_dir_name)
+    output_dir.mkdir()
+    for i, chunk in tqdm(
+        enumerate(nrrd_files, start=1), total=len(nrrd_files)
+    ):
+        tfrecord_fname = str(output_dir / f"{i:02}.tfrecord")
+        with tf.io.TFRecordWriter(tfrecord_fname) as writer:
+            for fname in chunk:
+                nib_obj = nib.load(fname)
+                scan = nib_obj.get_fdata().T  # transpose to obtain C order
+                scan = preprocess_scan(scan, downsample)
+                save_scan(writer, scan)
+
+
 if __name__ == "__main__":
     import doctest
 
@@ -105,10 +123,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Convert multiple CT scans to a single tfrecord file"
     )
-    parser.add_argument("file_type", choices=["nrrd", "dicom"])
+    parser.add_argument("file_type", choices=["nrrd", "dicom", "nifti"])
     parser.add_argument(
         "path_glob",
-        help="Glob that identifies all the nrrd/dicom files to convert (must be inside quotes)",
+        help="Glob that identifies all the nrrd/dicom/nifti files to convert (must be inside quotes)",
     )
     parser.add_argument(
         "-d", "--downsample", type=float, default=1, help="Downscaling factor"
@@ -124,3 +142,5 @@ if __name__ == "__main__":
         convert_nrrd(args.path_glob, args.output_dir, args.downsample)
     if args.file_type == "dicom":
         convert_dicom(args.path_glob, args.output_dir, args.downsample)
+    if args.file_type == "nifti":
+        convert_nifti(args.path_glob, args.output_dir, args.downsample)
