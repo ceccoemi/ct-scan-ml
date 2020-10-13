@@ -4,11 +4,13 @@ import argparse
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 from tqdm import tqdm
 
 from data import get_datasets
 from model import build_autoencoder
 from config import (
+    use_mixed_precision,
     verbose_training,
     seed,
     epochs,
@@ -61,7 +63,11 @@ def train(model, loss, optimizer, train_dataset, val_dataset):
             with tf.GradientTape() as tape:
                 predictions = model(batch)
                 loss_value = loss(predictions, batch)
+                if use_mixed_precision:
+                    loss_value = optimizer.get_scaled_loss(loss_value)
             gradients = tape.gradient(loss_value, model.trainable_variables)
+            if use_mixed_precision:
+                gradients = optimizer.get_unscaled_gradients(gradients)
             optimizer.apply_gradients(
                 zip(gradients, model.trainable_variables)
             )
@@ -82,7 +88,7 @@ def train(model, loss, optimizer, train_dataset, val_dataset):
 
         val_loss_metric = tf.keras.metrics.Mean("val_loss", dtype=tf.float32)
         for batch in val_dataset:
-            predictions = model(batch)
+            predictions = model(batch, training=False)
             val_loss_metric.update_state(loss(predictions, batch))
 
         val_loss_mean = val_loss_metric.result()
@@ -134,4 +140,8 @@ if __name__ == "__main__":
         model = build_autoencoder()
         loss = keras.losses.MeanSquaredError()
         optimizer = keras.optimizers.Adam(lr=learning_rate)
+        if use_mixed_precision:
+            optimizer = mixed_precision.LossScaleOptimizer(
+                optimizer, loss_scale="dynamic"
+            )
         train(model, loss, optimizer, train_dataset, val_dataset)

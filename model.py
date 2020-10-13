@@ -47,13 +47,13 @@ def deconv_block(x, filters, kernel_size=3, dropout_rate=0.1, pool_size=2):
 
 def build_autoencoder():
     encoder_inputs = keras.Input(input_shape)
-    x = conv_block(encoder_inputs, filters=8)
-    encoder_outputs = conv_block(x, filters=16)
+    x = conv_block(encoder_inputs, filters=32)
+    encoder_outputs = conv_block(x, filters=64)
     encoder = keras.Model(encoder_inputs, encoder_outputs, name="encoder")
 
     decoder_inputs = keras.Input(encoder.output_shape[1:])
-    x = deconv_block(decoder_inputs, filters=16)
-    x = deconv_block(x, filters=8)
+    x = deconv_block(decoder_inputs, filters=64)
+    x = deconv_block(x, filters=32)
     decoder_outputs = keras.layers.Dense(1, activation="sigmoid")(x)
     decoder = keras.Model(decoder_inputs, decoder_outputs, name="decoder")
 

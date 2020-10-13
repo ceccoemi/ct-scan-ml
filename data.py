@@ -4,6 +4,7 @@ import tensorflow as tf
 
 from config import (
     seed,
+    data_root_dir,
     tcia_glob,
     nrrd_glob,
     batch_size,
@@ -40,10 +41,14 @@ def normalize(t):
 
 def get_datasets():
     "Return training, validation and test set"
-    data_dir = Path("data")
+    data_dir = Path(data_root_dir)
+    assert data_dir.exists(), f"{data_dir} directory does not exists."
     tfrecord_fnames = [
         str(p)
-        for g in (data_dir.glob(tcia_glob), data_dir.glob(nrrd_glob),)
+        for g in (
+            data_dir.glob(tcia_glob),
+            data_dir.glob(nrrd_glob),
+        )
         for p in g
     ]
 
@@ -66,11 +71,13 @@ def get_datasets():
     dataset = dataset.skip(test_num_samples)
     val_dataset = dataset.take(validation_num_samples)
     val_dataset = val_dataset.padded_batch(
-        batch_size=batch_size, padded_shapes=input_shape,
+        batch_size=batch_size,
+        padded_shapes=input_shape,
     )
     train_dataset = dataset.skip(validation_num_samples)
     train_dataset = train_dataset.padded_batch(
-        batch_size=batch_size, padded_shapes=input_shape,
+        batch_size=batch_size,
+        padded_shapes=input_shape,
     )
     train_dataset = train_dataset.cache()  # must be called before shuffle
     train_dataset = train_dataset.shuffle(

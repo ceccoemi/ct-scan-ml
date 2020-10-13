@@ -36,6 +36,10 @@ def plot_animated_volume(scan, batch_index=0, fps=30):
         return [img]
 
     anim = FuncAnimation(
-        fig, animate, frames=scan.shape[1], interval=1000 / fps, blit=True,
+        fig,
+        animate,
+        frames=scan.shape[1],
+        interval=1000 / fps,
+        blit=True,
     )
     return HTML(anim.to_html5_video())
