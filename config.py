@@ -26,7 +26,7 @@ use_mixed_precision = False
 if use_mixed_precision:
     compute_precision("mixed_float16")
 
-verbose_training = True
+verbose_training = False
 seed = 5
 data_root_dir = "/pclhcb06/emilio"
 
@@ -50,6 +50,6 @@ nrrd_glob = "nrrd-0.25/*.tfrecord"
 epochs = 1000
 learning_rate = 0.0001
 patience = 20
-batch_size = 4
+batch_size = 8
 test_num_samples = 10
-validation_num_samples = 12  # it should be divisible by batch size
+validation_num_samples = 16  # it should be divisible by batch size
