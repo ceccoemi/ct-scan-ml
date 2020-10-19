@@ -2,12 +2,12 @@ import tensorflow as tf
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
 
-def allocate_gpu_memory_only_when_needed():
+def allocate_gpu_memory_only_when_needed(v):
     "This is to allocate GPU memory only when needed"
     gpus = tf.config.experimental.list_physical_devices("GPU")
     if gpus:
         for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
+            tf.config.experimental.set_memory_growth(gpu, v)
 
 
 def compute_precision(precision: str):
@@ -19,8 +19,6 @@ def compute_precision(precision: str):
     policy = mixed_precision.Policy(precision)
     mixed_precision.set_policy(policy)
 
-
-allocate_gpu_memory_only_when_needed()
 
 use_mixed_precision = False
 if use_mixed_precision:
@@ -47,9 +45,10 @@ nrrd_glob = "nrrd-0.25/*.tfrecord"
 
 
 # Hyperparameters
+encoder_num_filters = [32, 64, 128]
 epochs = 1000
 learning_rate = 0.0001
-patience = 20
-batch_size = 8
+patience = 0
+batch_size = 4
 test_num_samples = 10
 validation_num_samples = 16  # it should be divisible by batch size

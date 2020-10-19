@@ -1,6 +1,6 @@
 from tensorflow import keras
 
-from config import input_shape
+from config import input_shape, encoder_num_filters
 
 
 def conv_block(x, filters, kernel_size=3, dropout_rate=0.1, pool_size=2):
@@ -45,27 +45,36 @@ def deconv_block(x, filters, kernel_size=3, dropout_rate=0.1, pool_size=2):
     return x
 
 
-def build_autoencoder():
-    encoder_inputs = keras.Input(input_shape)
-    x = conv_block(encoder_inputs, filters=16)
-    x = conv_block(x, filters=32)
-    encoder_outputs = conv_block(x, filters=64)
+def build_encoder(encoder_input_shape=input_shape):
+    "Return the encoder model."
+    encoder_inputs = keras.Input(encoder_input_shape)
+    x = encoder_inputs
+    for num_filters in encoder_num_filters:
+        x = conv_block(x, filters=num_filters)
+    encoder_outputs = x
     encoder = keras.Model(encoder_inputs, encoder_outputs, name="encoder")
+    return encoder
 
+
+def build_autoencoder(encoder_input_shape=input_shape):
+    """Build the autoencoder (encoder + decoder).
+
+    The decoder is a mirrored image of the encoder
+    plus a dense layer at the end with one neuron.
+    """
+    encoder = build_encoder(encoder_input_shape)
     decoder_inputs = keras.Input(encoder.output_shape[1:])
-    x = deconv_block(decoder_inputs, filters=64)
-    x = deconv_block(x, filters=32)
-    x = deconv_block(x, filters=16)
+    x = decoder_inputs
+    for num_filters in reversed(encoder_num_filters):
+        x = deconv_block(x, filters=num_filters)
     x = keras.layers.Dense(1)(x)
     decoder_outputs = keras.layers.Activation("sigmoid", dtype="float32")(x)
     decoder = keras.Model(decoder_inputs, decoder_outputs, name="decoder")
-
     autoencoder = keras.models.Sequential(
         [encoder, decoder], name="autoencoder"
     )
-
-    assert (
-        autoencoder.output_shape[1:] == input_shape
-    ), "Autoencoder input and output must have the same shape"
-
+    assert autoencoder.output_shape[1:] == encoder_input_shape, (
+        "Autoencoder input and output must have the same shape, "
+        f"expected {encoder_input_shape}; actual: {autoencoder.output_shape[1:]}"
+    )
     return autoencoder
