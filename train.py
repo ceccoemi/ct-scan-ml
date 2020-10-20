@@ -20,54 +20,6 @@ from config import (
 )
 
 
-def train_func(
-    model,
-    optimizer,
-    loss,
-    train_dataset,
-    val_dataset,
-    model_dir,
-    logs_dir,
-    monitor_metric,
-    metrics=None,
-):
-    """Perform a training and return the trained model
-    (loaded at the best epoch).
-
-    model_dir is the path of the directory where the model will be saved.
-    logs_dir is the path of the tensorboard directory.
-    monitor_metric is the metric to monitor for early stopping.
-    metrics is a list of metrics to track during the training.
-    """
-    start_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    best_checkpoint = f"{model_dir}/{start_time}.h5"
-    checkpoint_cb = keras.callbacks.ModelCheckpoint(
-        best_checkpoint, save_best_only=True
-    )
-    early_stopping_cb = keras.callbacks.EarlyStopping(
-        monitor=monitor_metric, patience=patience
-    )
-    tensorboard_cb = tf.keras.callbacks.TensorBoard(
-        log_dir=f"{logs_dir}/{start_time}",
-        histogram_freq=1,
-        write_graph=False,
-        profile_batch=0,
-    )
-    model.compile(
-        optimizer=optimizer,
-        loss=loss,
-        metrics=metrics,
-    )
-    model.fit(
-        train_dataset,
-        validation_data=val_dataset,
-        epochs=epochs,
-        callbacks=[checkpoint_cb, early_stopping_cb, tensorboard_cb],
-    )
-    model = keras.models.load_model(best_checkpoint)
-    return model
-
-
 class EarlyStopping:
     def __init__(self, patience, delta=0):
         self.patience = patience

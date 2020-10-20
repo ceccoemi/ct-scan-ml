@@ -32,11 +32,13 @@ def example_to_tensor(example):
     return scan
 
 
-def normalize(scan):
-    "Normalize a CT scan with values in [0, 1]."
-    min_value = -1000  # =< 1000 is air
-    max_value = 400  # >= 400 is bones
-    scan = tf.clip_by_value(scan, -1000, 400)
+def normalize(scan, min_value=-1000, max_value=400):
+    """Normalize a CT scan with values in [0, 1].
+
+    min_value is -1000 by default, which in HU scale is air.
+    max_value is 400 by default, which in HU scale are bones.
+    """
+    scan = tf.clip_by_value(scan, min_value, max_value)
     scan = (scan - min_value) / (max_value - min_value)
     return scan
 

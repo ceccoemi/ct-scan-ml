@@ -99,12 +99,12 @@ def convert_dicom(path_glob, output_dir_name, downsample):
 
 
 def convert_nifti(path_glob, output_dir_name, downsample):
-    nrrd_files = [str(f) for f in Path(".").glob(path_glob)]
-    nrrd_files = split_into_subsequences(nrrd_files, 10)
+    nifti_files = [str(f) for f in Path(".").glob(path_glob)]
+    nifti_files = split_into_subsequences(nifti_files, 10)
     output_dir = Path(output_dir_name)
     output_dir.mkdir()
     for i, chunk in tqdm(
-        enumerate(nrrd_files, start=1), total=len(nrrd_files)
+        enumerate(nifti_files, start=1), total=len(nifti_files)
     ):
         tfrecord_fname = str(output_dir / f"{i:02}.tfrecord")
         with tf.io.TFRecordWriter(tfrecord_fname) as writer:
