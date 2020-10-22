@@ -45,7 +45,7 @@ nrrd_glob = "nrrd-0.25/*.tfrecord"
 
 
 # Hyperparameters
-encoder_num_filters = [32, 64, 128]
+encoder_num_filters = [64, 128, 256]
 epochs = 1000
 learning_rate = 0.0001
 patience = 20
