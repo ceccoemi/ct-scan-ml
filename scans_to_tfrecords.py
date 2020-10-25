@@ -85,7 +85,10 @@ def convert_dicom(path_glob, output_dir_name, downsample):
             for dcm_dir in chunk:
                 dcm_files = Path(dcm_dir).glob("*.dcm")
                 dcm_slices = [dcmread(str(f)) for f in dcm_files]
-                is_volume = hasattr(dcm_slices[0], "SliceLocation")
+                is_volume = (
+                    hasattr(dcm_slices[0], "SliceLocation")
+                    and len(dcm_slices) >= 4
+                )
                 if is_volume:
                     dcm_slices = sorted(
                         dcm_slices, key=lambda x: x.SliceLocation

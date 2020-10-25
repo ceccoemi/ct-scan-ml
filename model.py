@@ -5,7 +5,7 @@ from config import input_shape, encoder_num_filters
 
 def conv_block(x, filters, kernel_size=3, dropout_rate=0.1, pool_size=2):
     """
-    - Convolution 3D (with selu)
+    - Convolution 3D (with selu activation)
     - AlphaDropout
     - Max pool 3D
 
