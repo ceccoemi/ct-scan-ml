@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-from scipy import ndimage
+from scipy.ndimage import zoom
 import tensorflow as tf
 from tqdm import tqdm
 import nrrd
@@ -13,7 +13,9 @@ import nibabel as nib
 def preprocess_scan(scan, downsample):
     "Apply some preprocessing to the image"
     if downsample != 1:
-        scan = ndimage.zoom(scan, 1 / downsample)
+        z, y, x = scan.shape
+        scan = zoom(scan, (48 / z, 256 / y, 256 / x), order=5)
+        # scan = zoom(scan, 1 / downsample)
     scan = scan.astype(np.float32)
     return scan
 
