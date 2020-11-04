@@ -17,19 +17,6 @@ def plot_slice(scan, z_index=0, ax=None):
     return ax.imshow(scan[z_index, :, :, 0], cmap="gray")
 
 
-def grid_plot_slices(scan):
-    """Plot multiple slices of a 3D scan.
-
-    scan must be [z, y, x, channels].
-    """
-    fig, ax = plt.subplots(nrows=3, ncols=4)
-    z = 0
-    for row in range(1, 4):
-        for col in range (1, 5):
-            plot_slice(scan[z, :], ax[row][col])
-            z += 1
-
-
 def plot_animated_volume(scan, fps=10):
     """Plot an animation along the z axis.
 
