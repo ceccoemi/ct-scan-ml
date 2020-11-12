@@ -137,12 +137,13 @@ def get_malignancies(xml_file, nodule_ids):
 
 def volume_to_example(volume):
     "Convert a volume (a NumPy array) to a tf.train.Example class"
-    z, y, x = volume.shape
+    z, y, x, chn = volume.shape
     volume_raw = volume.tostring()
     volume_features = {
         "z": tf.train.Feature(int64_list=tf.train.Int64List(value=[z])),
         "y": tf.train.Feature(int64_list=tf.train.Int64List(value=[y])),
         "x": tf.train.Feature(int64_list=tf.train.Int64List(value=[x])),
+        "chn": tf.train.Feature(int64_list=tf.train.Int64List(value=[chn])),
         "volume_raw": tf.train.Feature(
             bytes_list=tf.train.BytesList(value=[volume_raw])
         ),
@@ -230,7 +231,13 @@ def main():
             else:
                 continue  # if the malignancies median is 3 then discard the nodule
             patch = extract_patch(scan, row.xloc, row.yloc, row.zloc)
-            patch = pad_to_shape(patch, PATCH_SHAPE)
+            patch = pad_to_shape(patch, PATCH_SHAPE[:-1])
+            patch = np.expand_dims(patch, axis=-1)  # add the channel axis
+            if not patch.any():
+                print(
+                    "Patch contains only zeros for scan {scan_id} in case {case}. Skipping ..."
+                )
+                continue
             assert (
                 patch.shape == PATCH_SHAPE
             ), f"Wrong shape for scan {scan_id} in case {case}."

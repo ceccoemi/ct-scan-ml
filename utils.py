@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+from config import SEED
+
 
 def example_to_tensor(example):
     "Reconstruct a 3D volume from a tf.train.Example."
@@ -9,24 +11,24 @@ def example_to_tensor(example):
             "z": tf.io.FixedLenFeature([], tf.int64),
             "y": tf.io.FixedLenFeature([], tf.int64),
             "x": tf.io.FixedLenFeature([], tf.int64),
+            "chn": tf.io.FixedLenFeature([], tf.int64),
             "volume_raw": tf.io.FixedLenFeature([], tf.string),
         },
     )
     volume_1d = tf.io.decode_raw(volume_features["volume_raw"], tf.float32)
     volume = tf.reshape(
         volume_1d,
-        (volume_features["z"], volume_features["y"], volume_features["x"]),
+        (
+            volume_features["z"],
+            volume_features["y"],
+            volume_features["x"],
+            volume_features["chn"],
+        ),
     )
     return volume
 
 
-@tf.function
-def add_channel_axis(image):
-    "Append the channel axis to the input image (2D or 3D)."
-    return tf.expand_dims(image, axis=-1)
-
-
-def train_test_split(dataset, test_perc=0.1, cardinality=None, seed=None):
+def train_test_split(dataset, test_perc=0.1, cardinality=None, seed=SEED):
     """Return a tuple (train_dataset, test_dataset).
 
     The dataset is shuffled with the specified seed.

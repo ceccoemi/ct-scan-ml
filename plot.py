@@ -8,7 +8,7 @@ from IPython.display import HTML
 def _validate_volume(volume):
     assert (
         3 <= len(volume.shape) <= 4
-    ), "volume must be [z, y, x, (channels)], where channels is optional."
+    ), f"volume must be [z, y, x, (channels)], where channels is optional. Get {volume.shape}"
     if tf.is_tensor(volume):
         volume = volume.numpy()
     if volume.dtype != np.float32:

@@ -1,2 +1,2 @@
 SEED = 5
-PATCH_SHAPE = (16, 64, 64)
+PATCH_SHAPE = (16, 64, 64, 1)

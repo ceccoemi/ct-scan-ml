@@ -5,7 +5,7 @@ from config import SEED
 
 
 @tf.function
-def random_rotate(volume, label):
+def random_rotate(volume, label, seed=SEED):
     """Rotate the volume by a random degree.
 
     volume must be [z, x, y, (channels)].
@@ -13,9 +13,11 @@ def random_rotate(volume, label):
 
     def scipy_rotate(volume):
         angle = tf.random.uniform(
-            shape=(1,), minval=-180, maxval=180, dtype=tf.int32, seed=SEED
+            shape=(1,), minval=-180, maxval=180, dtype=tf.int32, seed=seed
         )[0].numpy()
-        volume = ndimage.rotate(volume, angle, axes=(1, 2), reshape=False)
+        volume = ndimage.rotate(
+            volume, angle, axes=(1, 2), reshape=False, order=5
+        )
         volume[volume < 0] = 0
         volume[volume > 1] = 1
         return volume
@@ -25,13 +27,13 @@ def random_rotate(volume, label):
 
 
 @tf.function
-def random_flip(volume, label=None):
+def random_flip(volume, label=None, seed=SEED):
     """Flip the volume at a random dimension or leave it unchanged.
 
     volume must be [z, x, y, (channels)].
     """
     flip_dim = tf.random.uniform(
-        (1,), minval=0, maxval=4, dtype=tf.int32, seed=SEED
+        (1,), minval=0, maxval=4, dtype=tf.int32, seed=seed
     )
     if flip_dim[0] != 3:
         volume = tf.reverse(volume, axis=flip_dim)
