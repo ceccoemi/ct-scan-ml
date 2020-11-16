@@ -10,7 +10,14 @@ from pydicom import dcmread
 import tensorflow as tf
 from tqdm import tqdm
 
-from config import PATCH_SHAPE
+from config import (
+    SMALL_NEG_TFRECORD,
+    SMALL_POS_TFRECORD,
+    BIG_NEG_TFRECORD,
+    BIG_POS_TFRECORD,
+    SMALL_PATCH_SHAPE,
+    BIG_PATCH_SHAPE,
+)
 
 
 def read_lidc_size_report(csv_file):
@@ -49,7 +56,7 @@ def read_lidc_size_report(csv_file):
     return df
 
 
-def read_dcm(dcm_dir):
+def read_dcm(dcm_dir, reverse_z=True):
     """Read the DICOM slices and convert it to a single numpy array.
 
     dcm_dir is the directory where the dcm files of the slices are placed.
@@ -57,28 +64,17 @@ def read_dcm(dcm_dir):
     """
     dcm_slices = [dcmread(f) for f in dcm_dir.glob("*.dcm")]
     dcm_slices = sorted(
-        dcm_slices, key=lambda x: x.SliceLocation, reverse=True
+        dcm_slices, key=lambda x: x.SliceLocation, reverse=reverse_z
     )
     scan = np.stack([s.pixel_array for s in dcm_slices])
     return scan
 
 
-def extract_patch(
-    volume,
-    xloc,
-    yloc,
-    zloc,
-    xsize=PATCH_SHAPE[2],
-    ysize=PATCH_SHAPE[1],
-    zsize=PATCH_SHAPE[0],
-):
-    """
-    Extract a 3D patch of size (zsize, ysize, xsize) from the input volume.
-
-    (zloc, yloc, xloc) is the median voxel.
-    Input volume must be [z, y, x].
-    """
+def extract_patch(volume, median_voxel, size):
+    "Extract a 3D patch of the specified size from the input volume"
     z, y, x = volume.shape
+    zloc, yloc, xloc = median_voxel
+    zsize, ysize, xsize = size
     assert (
         xloc < x and yloc < y and zloc < z
     ), f"Can't find loc ({zloc}, {yloc}, {xloc}) with input shape {volume.shape}"
@@ -155,7 +151,7 @@ def volume_to_example(volume):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Extract the 3D patches containing the nodules and store them in two TFRecord files."
+        description="Extract the 3D patches containing the nodules and store them in TFRecord files.",
     )
     parser.add_argument(
         "data_dir",
@@ -165,42 +161,40 @@ def main():
         "csv_file",
         help="CSV file obtained from http://www.via.cornell.edu/lidc",
     )
-    parser.add_argument(
-        "negative_tfrecord",
-        help="Path of the TFRecord file where the negative samples will be stored",
-    )
-    parser.add_argument(
-        "positive_tfrecord",
-        help="Path of the TFRecord file where the positive samples will be stored",
-    )
 
     args = parser.parse_args()
 
-    root_dir = Path(args.data_dir)
+    data_dir = Path(args.data_dir)
     nodules_df = read_lidc_size_report(args.csv_file)
     assert (
         len(nodules_df.index) == 1387
     ), f"The input CSV {args.csv_file} has not the expected size."
 
     with tf.io.TFRecordWriter(
-        args.negative_tfrecord
-    ) as neg_writer, tf.io.TFRecordWriter(
-        args.positive_tfrecord
-    ) as pos_writer:
+        SMALL_NEG_TFRECORD
+    ) as small_neg_writer, tf.io.TFRecordWriter(
+        SMALL_POS_TFRECORD
+    ) as small_pos_writer, tf.io.TFRecordWriter(
+        BIG_NEG_TFRECORD
+    ) as big_neg_writer, tf.io.TFRecordWriter(
+        BIG_POS_TFRECORD
+    ) as big_pos_writer:
         for row in tqdm(nodules_df.itertuples(), total=len(nodules_df.index)):
             case = row.case
             scan_id = row.scan
             dcm_dir_glob = list(
-                root_dir.glob(f"LIDC-IDRI-{case}/*/{scan_id}.*/")
+                data_dir.glob(f"LIDC-IDRI-{case}/*/{scan_id}.*/")
             )
             if len(dcm_dir_glob) == 0:
                 print(
-                    f"Can't find a scan {scan_id} in case {case}. Skipping ..."
+                    f"WARNING ({scan_id=} {case=}): "
+                    "Scan not found. Skipping this scan ..."
                 )
                 continue
             if len(dcm_dir_glob) > 1:
                 print(
-                    f"Found multiple scans {scan_id} in case {case}. Skipping ..."
+                    f"WARNING ({scan_id=} {case=}): "
+                    "Found multiple scans with same ids. Skipping this scan ..."
                 )
                 continue
             dcm_dir = dcm_dir_glob[0]
@@ -208,12 +202,14 @@ def main():
             xml_files = list(dcm_dir.glob("*.xml"))
             if len(xml_files) == 0:
                 print(
-                    f"Can't find a XML file for scan {scan_id} in case {case}. Skipping ..."
+                    f"WARNING ({scan_id=} {case=}): "
+                    "Can't find a XML file. Skipping this scan ..."
                 )
                 continue
             elif len(xml_files) > 1:
                 print(
-                    f"Found multiple XML files for scan {scan_id} in case {case}. Skipping ..."
+                    f"WARNING ({scan_id=} {case=}): "
+                    "Found multiple XML files. Skipping this scan ..."
                 )
                 continue
             xml_file = xml_files[0]
@@ -221,7 +217,8 @@ def main():
             malignancies = get_malignancies(xml_file, nodule_ids)
             if len(malignancies) < 3:
                 print(
-                    f"There are less than 3 evaluations for scan {scan_id} in case {case}. Skipping ..."
+                    f"WARNING ({scan_id=} {case=}): "
+                    "There are less than 3 evaluations. Skipping this patch ..."
                 )
             median_malignancy = median(malignancies)
             if median_malignancy < 3:
@@ -230,21 +227,42 @@ def main():
                 malignancy = 1
             else:
                 continue  # if the malignancies median is 3 then discard the nodule
-            patch = extract_patch(scan, row.xloc, row.yloc, row.zloc)
-            patch = pad_to_shape(patch, PATCH_SHAPE[:-1])
-            patch = np.expand_dims(patch, axis=-1)  # add the channel axis
-            if not patch.any():
+
+            big_writer = big_pos_writer if malignancy else big_neg_writer
+            big_patch = extract_patch(
+                scan,
+                (row.zloc, row.yloc, row.xloc),
+                BIG_PATCH_SHAPE[:-1],
+            )
+            big_patch = pad_to_shape(big_patch, BIG_PATCH_SHAPE[:-1])
+            big_patch = np.expand_dims(big_patch, axis=-1)
+            if not big_patch.any():
                 print(
-                    "Patch contains only zeros for scan {scan_id} in case {case}. Skipping ..."
+                    f"WARNING ({scan_id=} {case=}): "
+                    "Patch contains only zeros. Skipping this patch ..."
                 )
                 continue
             assert (
-                patch.shape == PATCH_SHAPE
+                big_patch.shape == BIG_PATCH_SHAPE
             ), f"Wrong shape for scan {scan_id} in case {case}."
-            writer = pos_writer if malignancy else neg_writer
-            patch = patch.astype(np.float32)
-            example = volume_to_example(patch)
-            writer.write(example.SerializeToString())
+            big_patch = big_patch.astype(np.float32)
+            big_example = volume_to_example(big_patch)
+            big_writer.write(big_example.SerializeToString())
+
+            small_writer = small_pos_writer if malignancy else small_neg_writer
+            small_patch = extract_patch(
+                scan,
+                (row.zloc, row.yloc, row.xloc),
+                SMALL_PATCH_SHAPE[:-1],
+            )
+            small_patch = pad_to_shape(small_patch, SMALL_PATCH_SHAPE[:-1])
+            small_patch = np.expand_dims(small_patch, axis=-1)
+            assert (
+                small_patch.shape == SMALL_PATCH_SHAPE
+            ), f"Wrong shape for scan {scan_id} in case {case}."
+            small_patch = small_patch.astype(np.float32)
+            small_example = volume_to_example(small_patch)
+            small_writer.write(small_example.SerializeToString())
 
 
 if __name__ == "__main__":
