@@ -1,20 +1,19 @@
 import argparse
 from pathlib import Path
 import xml.etree.ElementTree as ET
-from math import ceil, floor
 from statistics import median
 
 import numpy as np
 import pandas as pd
-from pydicom import dcmread
 import tensorflow as tf
 from tqdm import tqdm
 
+from utils import read_dcm, extract_patch, pad_to_shape, volume_to_example
 from config import (
-    SMALL_NEG_TFRECORD,
-    SMALL_POS_TFRECORD,
-    BIG_NEG_TFRECORD,
-    BIG_POS_TFRECORD,
+    LIDC_SMALL_NEG_TFRECORD,
+    LIDC_SMALL_POS_TFRECORD,
+    LIDC_BIG_NEG_TFRECORD,
+    LIDC_BIG_POS_TFRECORD,
     SMALL_PATCH_SHAPE,
     BIG_PATCH_SHAPE,
 )
@@ -56,63 +55,6 @@ def read_lidc_size_report(csv_file):
     return df
 
 
-def read_dcm(dcm_dir, reverse_z=True):
-    """Read the DICOM slices and convert it to a single numpy array.
-
-    dcm_dir is the directory where the dcm files of the slices are placed.
-    Return a numpy array [z, y, x]
-    """
-    dcm_slices = [dcmread(f) for f in dcm_dir.glob("*.dcm")]
-    dcm_slices = sorted(
-        dcm_slices, key=lambda x: x.SliceLocation, reverse=reverse_z
-    )
-    scan = np.stack([s.pixel_array for s in dcm_slices])
-    return scan
-
-
-def extract_patch(volume, median_voxel, size):
-    "Extract a 3D patch of the specified size from the input volume"
-    z, y, x = volume.shape
-    zloc, yloc, xloc = median_voxel
-    zsize, ysize, xsize = size
-    assert (
-        xloc < x and yloc < y and zloc < z
-    ), f"Can't find loc ({zloc}, {yloc}, {xloc}) with input shape {volume.shape}"
-    return volume[
-        (zloc - zsize // 2) : (zloc + zsize // 2),
-        (yloc - ysize // 2) : (yloc + ysize // 2),
-        (xloc - xsize // 2) : (xloc + xsize // 2),
-    ]
-
-
-def pad_to_shape(volume, shape):
-    "Pad the input volume (3 dimensions) to have the input shape"
-    assert (
-        len(volume.shape) == 3
-    ), f"Expected 3 dimensions, input has {len(volume.shape)} dimensions."
-    assert (
-        volume.shape <= shape
-    ), f"Input volume (found {volume.shape}) can't be greater than shape (found {shape})."
-    if volume.shape == shape:
-        return volume
-    dim1, dim2, dim3 = volume.shape
-    target_dim1, target_dim2, target_dim3 = shape
-    pad_dim1 = target_dim1 - dim1
-    pad_dim2 = target_dim2 - dim2
-    pad_dim3 = target_dim3 - dim3
-    left_pad_dim1, right_pad_dim1 = ceil(pad_dim1 / 2), floor(pad_dim1 / 2)
-    left_pad_dim2, right_pad_dim2 = ceil(pad_dim2 / 2), floor(pad_dim2 / 2)
-    left_pad_dim3, right_pad_dim3 = ceil(pad_dim3 / 2), floor(pad_dim3 / 2)
-    return np.pad(
-        volume,
-        (
-            (left_pad_dim1, right_pad_dim1),
-            (left_pad_dim2, right_pad_dim2),
-            (left_pad_dim3, right_pad_dim3),
-        ),
-    )
-
-
 def get_malignancies(xml_file, nodule_ids):
     "Return a list of the assigned malignancies extracted from the XML"
     tree = ET.parse(xml_file)
@@ -129,24 +71,6 @@ def get_malignancies(xml_file, nodule_ids):
                 if malignancy > 0:
                     malignancies.append(malignancy)
     return malignancies
-
-
-def volume_to_example(volume):
-    "Convert a volume (a NumPy array) to a tf.train.Example class"
-    z, y, x, chn = volume.shape
-    volume_raw = volume.tostring()
-    volume_features = {
-        "z": tf.train.Feature(int64_list=tf.train.Int64List(value=[z])),
-        "y": tf.train.Feature(int64_list=tf.train.Int64List(value=[y])),
-        "x": tf.train.Feature(int64_list=tf.train.Int64List(value=[x])),
-        "chn": tf.train.Feature(int64_list=tf.train.Int64List(value=[chn])),
-        "volume_raw": tf.train.Feature(
-            bytes_list=tf.train.BytesList(value=[volume_raw])
-        ),
-    }
-    return tf.train.Example(
-        features=tf.train.Features(feature=volume_features)
-    )
 
 
 def main():
@@ -171,13 +95,13 @@ def main():
     ), f"The input CSV {args.csv_file} has not the expected size."
 
     with tf.io.TFRecordWriter(
-        SMALL_NEG_TFRECORD
+        LIDC_SMALL_NEG_TFRECORD
     ) as small_neg_writer, tf.io.TFRecordWriter(
-        SMALL_POS_TFRECORD
+        LIDC_SMALL_POS_TFRECORD
     ) as small_pos_writer, tf.io.TFRecordWriter(
-        BIG_NEG_TFRECORD
+        LIDC_BIG_NEG_TFRECORD
     ) as big_neg_writer, tf.io.TFRecordWriter(
-        BIG_POS_TFRECORD
+        LIDC_BIG_POS_TFRECORD
     ) as big_pos_writer:
         for row in tqdm(nodules_df.itertuples(), total=len(nodules_df.index)):
             case = row.case

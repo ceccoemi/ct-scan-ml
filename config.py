@@ -1,8 +1,14 @@
 DATA_ROOT_DIR = "/pclhcb06/emilio"
-SMALL_NEG_TFRECORD = f"{DATA_ROOT_DIR}/small_neg_nodules.tfrecord"
-SMALL_POS_TFRECORD = f"{DATA_ROOT_DIR}/small_pos_nodules.tfrecord"
-BIG_NEG_TFRECORD = f"{DATA_ROOT_DIR}/big_neg_nodules.tfrecord"
-BIG_POS_TFRECORD = f"{DATA_ROOT_DIR}/big_pos_nodules.tfrecord"
+
+LIDC_SMALL_NEG_TFRECORD = f"{DATA_ROOT_DIR}/lidc_small_neg.tfrecord"
+LIDC_SMALL_POS_TFRECORD = f"{DATA_ROOT_DIR}/lidc_small_pos.tfrecord"
+LIDC_BIG_NEG_TFRECORD = f"{DATA_ROOT_DIR}/lidc_big_neg.tfrecord"
+LIDC_BIG_POS_TFRECORD = f"{DATA_ROOT_DIR}/lidc_big_pos.tfrecord"
+
+SPIE_SMALL_NEG_TFRECORD = f"{DATA_ROOT_DIR}/spie_small_neg.tfrecord"
+SPIE_SMALL_POS_TFRECORD = f"{DATA_ROOT_DIR}/spie_small_pos.tfrecord"
+SPIE_BIG_NEG_TFRECORD = f"{DATA_ROOT_DIR}/spie_big_neg.tfrecord"
+SPIE_BIG_POS_TFRECORD = f"{DATA_ROOT_DIR}/spie_big_pos.tfrecord"
 
 SEED = 5
 SMALL_PATCH_SHAPE = (8, 56, 56, 1)
