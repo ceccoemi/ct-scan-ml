@@ -94,3 +94,58 @@ def train_test_split(dataset, test_perc=0.1, cardinality=None, seed=SEED):
     test_dataset = dataset.take(test_size)
     train_dataset = dataset.skip(test_size)
     return train_dataset, test_dataset
+
+
+def classification_dataset(
+    small_neg_tfrecord,
+    big_neg_tfrecord,
+    small_pos_tfrecord,
+    big_pos_tfrecord,
+    return_size=False,
+):
+    """
+    Return a dataset used for classification,
+    where each element is of the form:
+
+        ((small_x, big_x), label)
+    """
+    neg_x = tf.data.Dataset.zip(
+        (
+            tfrecord_dataset(small_neg_tfrecord),
+            tfrecord_dataset(big_neg_tfrecord),
+        )
+    )
+    num_neg_samples = sum(1 for _ in neg_x)
+    neg_dataset = tf.data.Dataset.zip(
+        (
+            neg_x,
+            tf.data.Dataset.from_tensor_slices(np.int8([[0]])).repeat(
+                num_neg_samples
+            ),
+        )
+    )
+    assert sum(1 for _ in neg_dataset) == num_neg_samples
+    pos_x = tf.data.Dataset.zip(
+        (
+            tfrecord_dataset(small_pos_tfrecord),
+            tfrecord_dataset(big_pos_tfrecord),
+        )
+    )
+    num_pos_samples = sum(1 for _ in pos_x)
+    pos_dataset = tf.data.Dataset.zip(
+        (
+            pos_x,
+            tf.data.Dataset.from_tensor_slices(np.int8([[1]])).repeat(
+                num_pos_samples
+            ),
+        )
+    )
+    assert sum(1 for _ in pos_dataset) == num_pos_samples
+    total_samples = num_neg_samples + num_pos_samples
+    dataset = neg_dataset.concatenate(pos_dataset).shuffle(
+        buffer_size=total_samples, seed=SEED, reshuffle_each_iteration=False
+    )
+    if return_size:
+        return dataset, total_samples
+    else:
+        return dataset
