@@ -1,39 +1,37 @@
 from tensorflow import keras
+import numpy as np
 
 
-def train_model(
+def best_num_epochs(
     model,
     train_dataset,
     val_dataset,
     patience,
     monitor_metric,
-    model_fname,
     log_dir,
+    metric_mode="max",
     max_epochs=1000,
     verbose_training=0,
-    verbose_checkpoint=0,
+    verbose_early_stopping=0,
 ):
     """
-    Train the model and return the best model found with early stopping.
+    Train the model and return number of epochs used
+    to each the best model parameters with early stopping.
 
-    model_fname is the filename where the best model will be saved
-    log_dir is the directory where to write the Tensorboard logs
+    log_dir is the directory where to write the Tensorboard logs.
     """
-    model.fit(
+    metric_mode = metric_mode.lower()
+    assert metric_mode in ("max", "min"), "metric_mode must be 'max' or 'min'"
+    history = model.fit(
         train_dataset,
         validation_data=val_dataset,
         epochs=max_epochs,
         verbose=verbose_training,
         callbacks=[
-            keras.callbacks.ModelCheckpoint(
-                model_fname,
-                monitor=monitor_metric,
-                verbose=verbose_checkpoint,
-                save_best_only=True,
-            ),
             keras.callbacks.EarlyStopping(
                 monitor=monitor_metric,
                 patience=patience,
+                verbose=verbose_early_stopping,
             ),
             keras.callbacks.TensorBoard(
                 log_dir=log_dir,
@@ -43,5 +41,28 @@ def train_model(
             ),
         ],
     )
-    model = keras.models.load_model(model_fname)
+    if metric_mode == "max":
+        return np.argmax(history.history[monitor_metric])
+    elif metric_mode == "min":
+        return np.argmin(history.history[monitor_metric])
+
+
+def train_model(
+    model,
+    train_dataset,
+    num_epochs,
+    model_fname,
+    verbose_training=0,
+):
+    """
+    Train the model and return the final trained model.
+
+    model_fname is the filename where the final model will be saved.
+    """
+    model.fit(
+        train_dataset,
+        epochs=num_epochs,
+        verbose=verbose_training,
+    )
+    model.save(model_fname)
     return model
