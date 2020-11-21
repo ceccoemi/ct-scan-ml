@@ -19,15 +19,17 @@ from config import (
 
 def read_xls(xls_file):
     "Read the excel file with nodule locations and labels"
-    df = pd.read_excel(xls_file)
-    df = df[:73]
+    df = pd.read_excel(xls_file).dropna()
     df[["xloc", "yloc"]] = df["Nodule Center x,y Position*"].apply(
         lambda x: pd.Series(eval(x))
     )
     df["Final Diagnosis"] = df["Final Diagnosis"].apply(
-        lambda x: "0" if x == "Benign nodule" else "1"
+        lambda x: "0" if "benign" in x.lower() else "1"
     )
-    df = df.drop(columns=["Nodule Number", "Nodule Center x,y Position*"])
+    df = df.drop(
+        columns=["Nodule Number", "Nodule Center x,y Position*"],
+        errors="ignore",
+    )
     df = df.rename(
         columns={
             "Scan Number": "scan_number",
@@ -49,17 +51,22 @@ def main():
         help="Directory containing all the DCM files downloaded from https://wiki.cancerimagingarchive.net/display/Public/SPIE-AAPM+Lung+CT+Challenge",
     )
     parser.add_argument(
-        "xls_file",
-        help="Excel file obtained from https://wiki.cancerimagingarchive.net/display/Public/SPIE-AAPM+Lung+CT+Challenge",
+        "test_xls_file",
+        help="Test Excel file obtained from https://wiki.cancerimagingarchive.net/display/Public/SPIE-AAPM+Lung+CT+Challenge",
     )
+    # parser.add_argument(
+    #    "calibration_xls_file",
+    #    help="Calibration Excel file obtained from https://wiki.cancerimagingarchive.net/display/Public/SPIE-AAPM+Lung+CT+Challenge",
+    # )
 
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir)
-    df = read_xls(args.xls_file)
-    assert (
-        len(df.index) == 73
-    ), f"The input excel {args.xls_file} has not the expected size."
+    df = read_xls(args.test_xls_file)
+    # test_df = read_xls(args.test_xls_file)
+    # calibration_df = read_xls(args.calibration_xls_file)
+    # df = pd.concat([test_df, calibration_df])
+    assert len(df.index) == 73, "The input excels have not the expected size."
 
     with tf.io.TFRecordWriter(
         SPIE_SMALL_NEG_TFRECORD

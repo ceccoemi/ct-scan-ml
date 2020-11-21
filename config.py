@@ -4,6 +4,10 @@ LIDC_SMALL_NEG_TFRECORD = f"{DATA_ROOT_DIR}/lidc_small_neg.tfrecord"
 LIDC_SMALL_POS_TFRECORD = f"{DATA_ROOT_DIR}/lidc_small_pos.tfrecord"
 LIDC_BIG_NEG_TFRECORD = f"{DATA_ROOT_DIR}/lidc_big_neg.tfrecord"
 LIDC_BIG_POS_TFRECORD = f"{DATA_ROOT_DIR}/lidc_big_pos.tfrecord"
+LIDC_SMALL_UNLABELED_TFRECORD = (
+    f"{DATA_ROOT_DIR}/lidc_small_unlabeled.tfrecord"
+)
+LIDC_BIG_UNLABELED_TFRECORD = f"{DATA_ROOT_DIR}/lidc_big_unlabeled.tfrecord"
 
 SPIE_SMALL_NEG_TFRECORD = f"{DATA_ROOT_DIR}/spie_small_neg.tfrecord"
 SPIE_SMALL_POS_TFRECORD = f"{DATA_ROOT_DIR}/spie_small_pos.tfrecord"

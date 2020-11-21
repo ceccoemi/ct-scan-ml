@@ -14,6 +14,8 @@ from config import (
     LIDC_SMALL_POS_TFRECORD,
     LIDC_BIG_NEG_TFRECORD,
     LIDC_BIG_POS_TFRECORD,
+    LIDC_SMALL_UNLABELED_TFRECORD,
+    LIDC_BIG_UNLABELED_TFRECORD,
     SMALL_PATCH_SHAPE,
     BIG_PATCH_SHAPE,
 )
@@ -102,7 +104,11 @@ def main():
         LIDC_BIG_NEG_TFRECORD
     ) as big_neg_writer, tf.io.TFRecordWriter(
         LIDC_BIG_POS_TFRECORD
-    ) as big_pos_writer:
+    ) as big_pos_writer, tf.io.TFRecordWriter(
+        LIDC_SMALL_UNLABELED_TFRECORD
+    ) as small_unlabeled_writer, tf.io.TFRecordWriter(
+        LIDC_BIG_UNLABELED_TFRECORD
+    ) as big_unlabeled_writer:
         for row in tqdm(nodules_df.itertuples(), total=len(nodules_df.index)):
             case = row.case
             scan_id = row.scan
@@ -139,20 +145,19 @@ def main():
             xml_file = xml_files[0]
             nodule_ids = row.ids
             malignancies = get_malignancies(xml_file, nodule_ids)
-            if len(malignancies) < 3:
-                print(
-                    f"WARNING ({scan_id=} {case=}): "
-                    "There are less than 3 evaluations. Skipping this patch ..."
-                )
             median_malignancy = median(malignancies)
             if median_malignancy < 3:
-                malignancy = 0
+                big_writer = big_neg_writer
+                small_writer = small_neg_writer
             elif median_malignancy > 3:
-                malignancy = 1
+                big_writer = big_pos_writer
+                small_writer = small_pos_writer
             else:
-                continue  # if the malignancies median is 3 then discard the nodule
+                # if the malignancies median is 3 then write the patch
+                # as unlabeled
+                big_writer = big_unlabeled_writer
+                small_writer = small_unlabeled_writer
 
-            big_writer = big_pos_writer if malignancy else big_neg_writer
             big_patch = extract_patch(
                 scan,
                 (row.zloc, row.yloc, row.xloc),
@@ -173,7 +178,6 @@ def main():
             big_example = volume_to_example(big_patch)
             big_writer.write(big_example.SerializeToString())
 
-            small_writer = small_pos_writer if malignancy else small_neg_writer
             small_patch = extract_patch(
                 scan,
                 (row.zloc, row.yloc, row.xloc),
