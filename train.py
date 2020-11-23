@@ -58,9 +58,9 @@ def get_best_num_epochs(
         ],
     )
     if "loss" in monitor_metric:
-        return np.argmin(history.history[monitor_metric])
+        return np.argmin(history.history[monitor_metric]) + 1
     elif "acc" in monitor_metric:
-        return np.argmax(history.history[monitor_metric])
+        return np.argmax(history.history[monitor_metric]) + 1
     raise ValueError("monitor_metric should be loss or accuracy")
 
 
