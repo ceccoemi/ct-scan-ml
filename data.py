@@ -1,8 +1,6 @@
 import numpy as np
 import tensorflow as tf
 
-from config import SEED
-
 
 def example_to_tensor(example):
     "Reconstruct a 3D volume from a tf.train.Example."
@@ -47,7 +45,7 @@ def tfrecord_dataset(tfrecord_fname):
     )
 
 
-def ksplit_dataset(k, dataset, cardinality=None, seed=SEED):
+def ksplit_dataset(k, dataset, cardinality=None, seed=None):
     "Split a dataset into k datasets and drop the remaining elements"
     if not cardinality:
         cardinality = sum(1 for _ in dataset)
@@ -63,7 +61,7 @@ def ksplit_dataset(k, dataset, cardinality=None, seed=SEED):
     return splits
 
 
-def kfolds(k, dataset, cardinality=None, seed=SEED):
+def kfolds(k, dataset, cardinality=None, seed=None):
     "Generator of training / test set with k fold"
     if not cardinality:
         cardinality = sum(1 for _ in dataset)
@@ -76,7 +74,7 @@ def kfolds(k, dataset, cardinality=None, seed=SEED):
         yield train_dataset, test_dataset
 
 
-def train_test_split(dataset, test_perc=0.1, cardinality=None, seed=SEED):
+def train_test_split(dataset, test_perc=0.1, cardinality=None, seed=None):
     """Return a tuple (train_dataset, test_dataset).
 
     The dataset is shuffled with the specified seed.
@@ -102,6 +100,7 @@ def classification_dataset(
     small_pos_tfrecord,
     big_pos_tfrecord,
     return_size=False,
+    seed=None,
 ):
     """
     Return a dataset used for classification,
@@ -143,7 +142,7 @@ def classification_dataset(
     assert sum(1 for _ in pos_dataset) == num_pos_samples
     total_samples = num_neg_samples + num_pos_samples
     dataset = neg_dataset.concatenate(pos_dataset).shuffle(
-        buffer_size=total_samples, seed=SEED, reshuffle_each_iteration=False
+        buffer_size=total_samples, seed=seed, reshuffle_each_iteration=False
     )
     if return_size:
         return dataset, total_samples
