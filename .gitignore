@@ -130,3 +130,5 @@ dmypy.json
 
 logs/
 models/
+model.png  # output of keras.utils.plot_model
+frac-training.csv
