@@ -1,5 +1,6 @@
 from functools import partial
 
+import tensorflow as tf
 from tensorflow import keras
 
 SeluConv3D = partial(
