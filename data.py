@@ -46,7 +46,7 @@ def tfrecord_dataset(tfrecord_fname):
 
 
 def ksplit_dataset(k, dataset, cardinality=None, seed=None):
-    "Split a dataset into k datasets and drop the remaining elements"
+    "Split a dataset into a list of k datasets"
     if not cardinality:
         cardinality = sum(1 for _ in dataset)
     assert 2 <= k <= cardinality
@@ -54,10 +54,12 @@ def ksplit_dataset(k, dataset, cardinality=None, seed=None):
         buffer_size=cardinality, reshuffle_each_iteration=False, seed=seed
     )
     split_size = cardinality // k
+    remainder = cardinality % k
     splits = []
-    for _ in range(k):
+    for _ in range(k - 1):
         splits.append(dataset.take(split_size))
         dataset = dataset.skip(split_size)
+    splits.append(dataset.take(split_size + remainder))
     return splits
 
 
