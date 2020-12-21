@@ -62,19 +62,37 @@ def pad_to_shape(volume, shape):
     )
 
 
-def volume_to_example(volume):
+def volume_to_example(volume, label=None):
     "Convert a volume (a NumPy array) to a tf.train.Example class"
     z, y, x, chn = volume.shape
     volume_raw = volume.tostring()
-    volume_features = {
-        "z": tf.train.Feature(int64_list=tf.train.Int64List(value=[z])),
-        "y": tf.train.Feature(int64_list=tf.train.Int64List(value=[y])),
-        "x": tf.train.Feature(int64_list=tf.train.Int64List(value=[x])),
-        "chn": tf.train.Feature(int64_list=tf.train.Int64List(value=[chn])),
-        "volume_raw": tf.train.Feature(
-            bytes_list=tf.train.BytesList(value=[volume_raw])
-        ),
-    }
+    if label:
+        volume_features = {
+            "z": tf.train.Feature(int64_list=tf.train.Int64List(value=[z])),
+            "y": tf.train.Feature(int64_list=tf.train.Int64List(value=[y])),
+            "x": tf.train.Feature(int64_list=tf.train.Int64List(value=[x])),
+            "chn": tf.train.Feature(
+                int64_list=tf.train.Int64List(value=[chn])
+            ),
+            "volume_raw": tf.train.Feature(
+                bytes_list=tf.train.BytesList(value=[volume_raw])
+            ),
+            "label": tf.train.Feature(
+                int64_list=tf.train.Int64List(value=[label])
+            ),
+        }
+    else:
+        volume_features = {
+            "z": tf.train.Feature(int64_list=tf.train.Int64List(value=[z])),
+            "y": tf.train.Feature(int64_list=tf.train.Int64List(value=[y])),
+            "x": tf.train.Feature(int64_list=tf.train.Int64List(value=[x])),
+            "chn": tf.train.Feature(
+                int64_list=tf.train.Int64List(value=[chn])
+            ),
+            "volume_raw": tf.train.Feature(
+                bytes_list=tf.train.BytesList(value=[volume_raw])
+            ),
+        }
     return tf.train.Example(
         features=tf.train.Features(feature=volume_features)
     )
