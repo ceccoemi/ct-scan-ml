@@ -127,8 +127,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
-logs/
-models/
-model.png  # output of keras.utils.plot_model
-frac-training.csv
