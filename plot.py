@@ -114,3 +114,18 @@ def _x_animation(volume, fps):
         blit=True,
     )
     return HTML(anim.to_html5_video())
+
+
+def plot_loss_history(history, ax=None):
+    if not ax:
+        ax = plt
+    ax.plot(history.history["loss"], label="Train loss")
+    ax.plot(history.history["val_loss"], label="Validation loss")
+    ax.axvline(
+        x=np.argmin(history.history["val_loss"]),
+        color="r",
+        ls="--",
+        label="Best validation loss",
+    )
+    ax.legend()
+    return ax

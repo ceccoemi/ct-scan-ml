@@ -2,8 +2,48 @@ import numpy as np
 import tensorflow as tf
 
 
-def example_to_tensor(example):
+def example_to_tensor(example, with_label=False):
     "Reconstruct a 3D volume from a tf.train.Example."
+    if with_label:
+        volume_features = tf.io.parse_single_example(
+            example,
+            {
+                "z": tf.io.FixedLenFeature([], tf.int64),
+                "y": tf.io.FixedLenFeature([], tf.int64),
+                "x": tf.io.FixedLenFeature([], tf.int64),
+                "chn": tf.io.FixedLenFeature([], tf.int64),
+                "volume_raw": tf.io.FixedLenFeature([], tf.string),
+                "label": tf.io.FixedLenFeature([], tf.int64),
+            },
+        )
+    else:
+        volume_features = tf.io.parse_single_example(
+            example,
+            {
+                "z": tf.io.FixedLenFeature([], tf.int64),
+                "y": tf.io.FixedLenFeature([], tf.int64),
+                "x": tf.io.FixedLenFeature([], tf.int64),
+                "chn": tf.io.FixedLenFeature([], tf.int64),
+                "volume_raw": tf.io.FixedLenFeature([], tf.string),
+            },
+        )
+    volume_1d = tf.io.decode_raw(volume_features["volume_raw"], tf.float32)
+    volume = tf.reshape(
+        volume_1d,
+        (
+            volume_features["z"],
+            volume_features["y"],
+            volume_features["x"],
+            volume_features["chn"],
+        ),
+    )
+    if with_label:
+        label = volume_features["label"]
+        return volume, label
+    return volume
+
+
+def example_to_labeled_volume(example):
     volume_features = tf.io.parse_single_example(
         example,
         {
@@ -12,6 +52,7 @@ def example_to_tensor(example):
             "x": tf.io.FixedLenFeature([], tf.int64),
             "chn": tf.io.FixedLenFeature([], tf.int64),
             "volume_raw": tf.io.FixedLenFeature([], tf.string),
+            "label": tf.io.FixedLenFeature([], tf.int64),
         },
     )
     volume_1d = tf.io.decode_raw(volume_features["volume_raw"], tf.float32)
@@ -24,7 +65,9 @@ def example_to_tensor(example):
             volume_features["chn"],
         ),
     )
-    return volume
+    label = volume_features["label"]
+    label = tf.cast(label, tf.uint16)
+    return volume, [label]
 
 
 @tf.function
@@ -32,6 +75,13 @@ def normalize(t):
     "Normalize the input tensor with values in [0, 1]"
     normalized_t, _ = tf.linalg.normalize(t, ord=np.inf)
     return normalized_t
+
+
+@tf.function
+def normalize_labeled(t, label):
+    "Normalize the input tensor with values in [0, 1]"
+    normalized_t, _ = tf.linalg.normalize(t, ord=np.inf)
+    return normalized_t, label
 
 
 def tfrecord_dataset(tfrecord_fname):
@@ -42,6 +92,20 @@ def tfrecord_dataset(tfrecord_fname):
             example_to_tensor, num_parallel_calls=tf.data.experimental.AUTOTUNE
         )
         .map(normalize, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    )
+
+
+def tfrecord_labeled_dataset(tfrecord_fname):
+    "Return a dataset with labels from a tfrecord file with normalized data"
+    return (
+        tf.data.TFRecordDataset(tfrecord_fname)
+        .map(
+            example_to_labeled_volume,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE,
+        )
+        .map(
+            normalize_labeled, num_parallel_calls=tf.data.experimental.AUTOTUNE
+        )
     )
 
 
