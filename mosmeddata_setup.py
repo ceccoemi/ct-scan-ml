@@ -23,7 +23,8 @@ def preprocess_scan(scan):
         scan, (target_z / z, target_y / y, target_x / x), order=5
     )
     scan = scan.astype(np.float32)
-    scan = scan[:, 32:-32, 16:-16]
+    scan = scan[:, 32:-32, 16:-16]  # downsample 2
+    # scan = scan[:, 16:-16, 8:-8]  # downsample 4
     scan = np.expand_dims(scan, axis=-1)  # add the channel dimension
     assert scan.shape == SCAN_SHAPE
     return scan
