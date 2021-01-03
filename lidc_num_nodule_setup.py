@@ -94,9 +94,16 @@ def main():
 
     data_dir = Path(args.data_dir)
     nodules_df = read_lidc_size_report(args.csv_file)
+    processed_nodules = set()
     with tf.io.TFRecordWriter(LIDC_NUM_NODULES_TFRECORD) as writer:
         for row in tqdm(nodules_df.itertuples(), total=len(nodules_df.index)):
             case = row.case
+            if case in processed_nodules:
+                print(
+                    f"WARNING ({case=}): "
+                    "Scan already processed. Skipping this entry ..."
+                )
+                continue
             scan_id = row.scan
             dcm_dir_glob = list(
                 data_dir.glob(f"LIDC-IDRI-{case}/*/{scan_id}.*/")
@@ -133,6 +140,7 @@ def main():
             scan = preprocess_scan(scan)
             scan_example = volume_to_example(scan, label=num_nodules)
             writer.write(scan_example.SerializeToString())
+            processed_nodules.add(case)
 
 
 if __name__ == "__main__":
