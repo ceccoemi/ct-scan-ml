@@ -214,3 +214,28 @@ def classification_dataset(
         return dataset, total_samples
     else:
         return dataset
+
+
+################################################################################
+def _parse_function(example_proto):
+  features = {"data": tf.io.FixedLenFeature((), tf.string),
+              "label": tf.io.FixedLenFeature((), tf.int64)}
+  parsed_features = tf.io.parse_single_example(example_proto, features)
+  data = tf.io.decode_raw(parsed_features['data'], tf.float32)
+  return data, parsed_features["label"]
+
+
+def load_tfrecords(srcfile):
+    dataset = tf.data.TFRecordDataset(srcfile) # load tfrecord file
+    dataset = dataset.map(_parse_function) # parse data into tensor
+    dataset = dataset.repeat(2) # repeat for 2 epoches
+    dataset = dataset.batch(5) # set batch_size = 5
+    
+    
+    return dataset
+
+
+
+
+
+
