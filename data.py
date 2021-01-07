@@ -86,25 +86,16 @@ def normalize_labeled(t, label):
 
 def tfrecord_dataset(tfrecord_fname):
     "Return a dataset from a tfrecord file with normalized data"
-    return (
-        tf.data.TFRecordDataset(tfrecord_fname)
-        .map(
-            example_to_tensor, num_parallel_calls=tf.data.experimental.AUTOTUNE
-        )
-        .map(normalize, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    return tf.data.TFRecordDataset(tfrecord_fname).map(
+        example_to_tensor, num_parallel_calls=tf.data.experimental.AUTOTUNE
     )
 
 
 def tfrecord_labeled_dataset(tfrecord_fname):
     "Return a dataset with labels from a tfrecord file with normalized data"
-    return (
-        tf.data.TFRecordDataset(tfrecord_fname).map(
-            example_to_labeled_volume,
-            num_parallel_calls=tf.data.experimental.AUTOTUNE,
-        )
-        # .map(
-        #    normalize_labeled, num_parallel_calls=tf.data.experimental.AUTOTUNE
-        # )
+    return tf.data.TFRecordDataset(tfrecord_fname).map(
+        example_to_labeled_volume,
+        num_parallel_calls=tf.data.experimental.AUTOTUNE,
     )
 
 

@@ -35,6 +35,9 @@ SCAN_SHAPE = (112, 192, 224, 1)
 
 ########### Num nodules regression #########
 
-LIDC_NUM_NODULES_TFRECORD = f"{DATA_ROOT_DIR}/lidc_num_nodules.tfrecord"
-# LIDC_NUM_NODULES_TFRECORD = f"{DATA_ROOT_DIR}/lidc_num_nodules_original.tfrecord"
-# LIDC_NUM_NODULES_TFRECORD = f"{DATA_ROOT_DIR}/lidc_num_nodules_0_5.tfrecord"
+LIDC_TOT_NUM_NODULES_TFRECORD = (
+    f"{DATA_ROOT_DIR}/lidc_tot_num_nodules.tfrecord"
+)
+LIDC_NUM_BIG_NODULES_TFRECORD = (
+    f"{DATA_ROOT_DIR}/lidc_num_big_nodules.tfrecord"
+)

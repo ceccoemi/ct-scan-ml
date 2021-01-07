@@ -9,54 +9,30 @@ from tqdm import tqdm
 
 from utils import read_dcm, volume_to_example
 from config import (
-    LIDC_NUM_NODULES_TFRECORD,
+    LIDC_TOT_NUM_NODULES_TFRECORD,
+    LIDC_NUM_BIG_NODULES_TFRECORD,
     RESIZED_SCAN_SHAPE,
     SCAN_SHAPE,
 )
 
 
-def read_lidc_size_report(csv_file):
-    """
-    Read the CSV file obtained from  http://www.via.cornell.edu/lidc/
-
-    Return a Pandas DataFrame with columns (case, scan, num_nodules)
-    """
-    df = pd.read_csv(csv_file, dtype={"case": str, "scan": str})
-    df["noduleIDs"] = (
-        df[["nodIDs", "Unnamed: 10", "Unnamed: 11", "Unnamed: 12"]]
-        .fillna("")
-        .values.tolist()
-    )
-    df["noduleIDs"] = df["noduleIDs"].apply(lambda x: [e for e in x if e])
+def read_xlsx_nodule_counts(xlsx_file):
+    "Read and transform the Excel file containing the nodule counts"
     df = (
-        df.drop(
-            columns=[
-                "volume",
-                "eq. diam.",
-                "nodIDs",
-                "x loc.",
-                "y loc.",
-                "slice no.",
-                "noduleIDs",
-                "Unnamed: 8",
-                "Unnamed: 10",
-                "Unnamed: 11",
-                "Unnamed: 12",
-                "Unnamed: 13",
-                "Unnamed: 14",
-                "Unnamed: 15",
-            ]
-        )
-        .groupby(["case", "scan"])
-        .count()
-        .reset_index()
+        pd.read_excel("/pclhcb06/emilio/lidc-nodule-counts.xlsx")
+        .drop(columns=["Unnamed: 4", "Unnamed: 5"])
+        .dropna()
         .rename(
             columns={
-                "roi": "num_nodules",
+                "TCIA Patent ID": "patient_id",
+                "Total Number of Nodules* ": "total_nodules",
+                "Number of Nodules >=3mm**": "big_nodules",
+                "Number of Nodules <3mm***": "small_nodules",
             }
         )
     )
-    assert len(df) == 876
+    df["patient_id"] = df["patient_id"].apply(lambda x: x[10:]) # Remove "LIDC-IDRI-" prefix
+    df = df.drop_duplicates("patient_id").reset_index()
     return df
 
 
@@ -75,53 +51,41 @@ def preprocess_scan(scan):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Divide the lung in two tfrecords files: num nodules < 25 and otherwise.",
+        description=(
+            "Create two TFRecords with entries of the type (ct_scan, num_nodules): "
+            "one with the total number of nodules and one with the number of nodules with size >=3mm"
+        )
     )
     parser.add_argument(
         "data_dir",
         help="Directory containing all the DCM files downloaded from https://wiki.cancerimagingarchive.net/display/Public/LIDC-IDRI",
     )
     parser.add_argument(
-        "csv_file",
-        help="CSV file obtained from http://www.via.cornell.edu/lidc",
+        "xlsx_file",
+        help="Excel file downloaded from https://wiki.cancerimagingarchive.net/display/Public/LIDC-IDRI, which contains the counts of the nodules",
     )
 
     args = parser.parse_args()
 
     data_dir = Path(args.data_dir)
-    nodules_df = read_lidc_size_report(args.csv_file)
-    processed_scans = set()
-    with tf.io.TFRecordWriter(LIDC_NUM_NODULES_TFRECORD) as writer:
-        for row in tqdm(nodules_df.itertuples(), total=len(nodules_df.index)):
-            case = row.case
-            scan_id = row.scan
-            if (case, scan_id) in processed_scans:
-                print(
-                    f"WARNING ({scan_id=} {case=}): "
-                    "Scan already processed. Skipping this entry ..."
-                )
-                continue
-            dcm_dir_glob = list(
-                data_dir.glob(f"LIDC-IDRI-{case}/*/{scan_id}.*/")
-            )
-            if len(dcm_dir_glob) == 0:
-                print(
-                    f"WARNING ({scan_id=} {case=}): "
-                    "Scan not found. Skipping this scan ..."
-                )
-                continue
-            if len(dcm_dir_glob) > 1:
-                print(
-                    f"WARNING ({scan_id=} {case=}): "
-                    "Found multiple scans with same ids. Skipping this scan ..."
-                )
-                continue
-            dcm_dir = dcm_dir_glob[0]
-            scan = read_dcm(dcm_dir, reverse_z=False)
+    df = read_xlsx_nodule_counts(args.xlsx_file)
+    with \
+        tf.io.TFRecordWriter(LIDC_TOT_NUM_NODULES_TFRECORD) as tot_writer, \
+        tf.io.TFRecordWriter(LIDC_NUM_BIG_NODULES_TFRECORD) as big_writer \
+    :
+        for row in tqdm(df.itertuples(), total=len(df.index)):
+            dcm_dirs = list(data_dir.glob(f"LIDC-IDRI-{row.patient_id}/*/*/"))
+            # Take the directory with the largest number of elements,
+            # which is the directory with the greates number of DICOM slices
+            dcm_dir = sorted(
+                dcm_dirs, key=lambda x: len(list(x.glob("*"))), reverse=True
+            )[0]
+            scan = read_dcm(dcm_dir)
             scan = preprocess_scan(scan)
-            scan_example = volume_to_example(scan, label=row.num_nodules)
-            writer.write(scan_example.SerializeToString())
-            processed_scans.add((case, scan_id))
+            tot_scan_example = volume_to_example(scan, label=row.total_nodules)
+            tot_writer.write(tot_scan_example.SerializeToString())
+            big_scan_example = volume_to_example(scan, label=row.big_nodules)
+            big_writer.write(big_scan_example.SerializeToString())
 
 
 if __name__ == "__main__":
