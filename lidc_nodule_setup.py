@@ -128,7 +128,7 @@ def main():
                 )
                 continue
             dcm_dir = dcm_dir_glob[0]
-            scan = read_dcm(dcm_dir)
+            scan = read_dcm(dcm_dir, reverse_z=True)
             xml_files = list(dcm_dir.glob("*.xml"))
             if len(xml_files) == 0:
                 print(

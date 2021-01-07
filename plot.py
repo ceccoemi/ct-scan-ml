@@ -127,5 +127,38 @@ def plot_loss_history(history, ax=None):
         ls="--",
         label="Best validation loss",
     )
+    ax.xlabel("Epochs")
+    ax.ylabel("Loss")
+    ax.legend()
+    return ax
+
+
+def plot_regression_results(
+    train_real_values,
+    train_predicted_values,
+    val_real_values=None,
+    val_predicted_values=None,
+    ax=None,
+):
+    if not ax:
+        ax = plt
+    ax.plot(
+        train_real_values,
+        train_predicted_values,
+        "ro",
+        markersize=10,
+        label="Train",
+    )
+    if val_real_values:
+        ax.plot(
+            val_real_values,
+            val_predicted_values,
+            "ko",
+            markersize=10,
+            label="Validation",
+        )
+    ax.plot([0.0, 1.0], [0.0, 1.0], "r--", label="Optimal")
+    ax.xlabel("Real labels")
+    ax.ylabel("Predicted labels")
     ax.legend()
     return ax

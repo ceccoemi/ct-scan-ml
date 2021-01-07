@@ -1,6 +1,5 @@
 import argparse
 from pathlib import Path
-import xml.etree.ElementTree as ET
 
 import numpy as np
 import pandas as pd
@@ -17,7 +16,11 @@ from config import (
 
 
 def read_lidc_size_report(csv_file):
-    "Read the CSV file obtained from  http://www.via.cornell.edu/lidc/"
+    """
+    Read the CSV file obtained from  http://www.via.cornell.edu/lidc/
+
+    Return a Pandas DataFrame with columns (case, scan, num_nodules)
+    """
     df = pd.read_csv(csv_file, dtype={"case": str, "scan": str})
     df["noduleIDs"] = (
         df[["nodIDs", "Unnamed: 10", "Unnamed: 11", "Unnamed: 12"]]
@@ -25,43 +28,36 @@ def read_lidc_size_report(csv_file):
         .values.tolist()
     )
     df["noduleIDs"] = df["noduleIDs"].apply(lambda x: [e for e in x if e])
-    df = df.drop(
-        columns=[
-            "volume",
-            "eq. diam.",
-            "nodIDs",
-            "Unnamed: 8",
-            "Unnamed: 10",
-            "Unnamed: 11",
-            "Unnamed: 12",
-            "Unnamed: 13",
-            "Unnamed: 14",
-            "Unnamed: 15",
-        ]
-    ).rename(
-        columns={
-            "x loc.": "xloc",
-            "y loc.": "yloc",
-            "slice no.": "zloc",
-            "noduleIDs": "ids",
-        }
+    df = (
+        df.drop(
+            columns=[
+                "volume",
+                "eq. diam.",
+                "nodIDs",
+                "x loc.",
+                "y loc.",
+                "slice no.",
+                "noduleIDs",
+                "Unnamed: 8",
+                "Unnamed: 10",
+                "Unnamed: 11",
+                "Unnamed: 12",
+                "Unnamed: 13",
+                "Unnamed: 14",
+                "Unnamed: 15",
+            ]
+        )
+        .groupby(["case", "scan"])
+        .count()
+        .reset_index()
+        .rename(
+            columns={
+                "roi": "num_nodules",
+            }
+        )
     )
-    df = df[
-        df.ids.apply(len) >= 3
-    ]  # keep the scan with at least 3 evaluations
+    assert len(df) == 876
     return df
-
-
-def get_num_nodules(xml_file):
-    "Return the number of nodules classified"
-    tree = ET.parse(xml_file)
-    root = tree.getroot()
-    prefix = "{http://www.nih.gov}"
-    num_nodules = 0
-    for reading_session in root.findall(f"{prefix}readingSession"):
-        for nodule in reading_session.findall(f"{prefix}unblindedReadNodule"):
-            num_nodules += 1
-    return num_nodules
 
 
 def preprocess_scan(scan):
@@ -71,7 +67,7 @@ def preprocess_scan(scan):
         scan, (target_z / z, target_y / y, target_x / x), order=5
     )
     scan = scan.astype(np.float32)
-    scan = scan[:, 32:-32, 16:-16]
+    scan = scan[8:-8, 32:-32, 16:-16]
     scan = np.expand_dims(scan, axis=-1)  # add the channel dimension
     assert scan.shape == SCAN_SHAPE
     return scan
@@ -94,17 +90,17 @@ def main():
 
     data_dir = Path(args.data_dir)
     nodules_df = read_lidc_size_report(args.csv_file)
-    processed_nodules = set()
+    processed_scans = set()
     with tf.io.TFRecordWriter(LIDC_NUM_NODULES_TFRECORD) as writer:
         for row in tqdm(nodules_df.itertuples(), total=len(nodules_df.index)):
             case = row.case
-            if case in processed_nodules:
+            scan_id = row.scan
+            if (case, scan_id) in processed_scans:
                 print(
-                    f"WARNING ({case=}): "
+                    f"WARNING ({scan_id=} {case=}): "
                     "Scan already processed. Skipping this entry ..."
                 )
                 continue
-            scan_id = row.scan
             dcm_dir_glob = list(
                 data_dir.glob(f"LIDC-IDRI-{case}/*/{scan_id}.*/")
             )
@@ -122,25 +118,10 @@ def main():
                 continue
             dcm_dir = dcm_dir_glob[0]
             scan = read_dcm(dcm_dir, reverse_z=False)
-            xml_files = list(dcm_dir.glob("*.xml"))
-            if len(xml_files) == 0:
-                print(
-                    f"WARNING ({scan_id=} {case=}): "
-                    "Can't find a XML file. Skipping this scan ..."
-                )
-                continue
-            elif len(xml_files) > 1:
-                print(
-                    f"WARNING ({scan_id=} {case=}): "
-                    "Found multiple XML files. Skipping this scan ..."
-                )
-                continue
-            xml_file = xml_files[0]
-            num_nodules = get_num_nodules(xml_file)
             scan = preprocess_scan(scan)
-            scan_example = volume_to_example(scan, label=num_nodules)
+            scan_example = volume_to_example(scan, label=row.num_nodules)
             writer.write(scan_example.SerializeToString())
-            processed_nodules.add(case)
+            processed_scans.add((case, scan_id))
 
 
 if __name__ == "__main__":
