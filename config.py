@@ -30,8 +30,7 @@ CT_4_TFRECORD = f"{DATA_ROOT_DIR}/CT-4.tfrecord"
 COVID_NEG_TFRECORD = f"{DATA_ROOT_DIR}/covid_neg.tfrecord"
 COVID_POS_TFRECORD = f"{DATA_ROOT_DIR}/covid_pos.tfrecord"
 
-RESIZED_SCAN_SHAPE = (128, 256, 256, 1)
-SCAN_SHAPE = (112, 192, 224, 1)
+COVID_SCAN_SHAPE = (42, 256, 256, 1)
 
 ########### Num nodules regression #########
 
@@ -41,3 +40,6 @@ LIDC_TOT_NUM_NODULES_TFRECORD = (
 LIDC_NUM_BIG_NODULES_TFRECORD = (
     f"{DATA_ROOT_DIR}/lidc_num_big_nodules.tfrecord"
 )
+
+RESIZED_SCAN_SHAPE = (128, 256, 256, 1)
+SCAN_SHAPE = (112, 192, 224, 1)

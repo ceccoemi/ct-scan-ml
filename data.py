@@ -4,29 +4,16 @@ import tensorflow as tf
 
 def example_to_tensor(example, with_label=False):
     "Reconstruct a 3D volume from a tf.train.Example."
-    if with_label:
-        volume_features = tf.io.parse_single_example(
-            example,
-            {
-                "z": tf.io.FixedLenFeature([], tf.int64),
-                "y": tf.io.FixedLenFeature([], tf.int64),
-                "x": tf.io.FixedLenFeature([], tf.int64),
-                "chn": tf.io.FixedLenFeature([], tf.int64),
-                "volume_raw": tf.io.FixedLenFeature([], tf.string),
-                "label": tf.io.FixedLenFeature([], tf.int64),
-            },
-        )
-    else:
-        volume_features = tf.io.parse_single_example(
-            example,
-            {
-                "z": tf.io.FixedLenFeature([], tf.int64),
-                "y": tf.io.FixedLenFeature([], tf.int64),
-                "x": tf.io.FixedLenFeature([], tf.int64),
-                "chn": tf.io.FixedLenFeature([], tf.int64),
-                "volume_raw": tf.io.FixedLenFeature([], tf.string),
-            },
-        )
+    volume_features = tf.io.parse_single_example(
+        example,
+        {
+            "z": tf.io.FixedLenFeature([], tf.int64),
+            "y": tf.io.FixedLenFeature([], tf.int64),
+            "x": tf.io.FixedLenFeature([], tf.int64),
+            "chn": tf.io.FixedLenFeature([], tf.int64),
+            "volume_raw": tf.io.FixedLenFeature([], tf.string),
+        },
+    )
     volume_1d = tf.io.decode_raw(volume_features["volume_raw"], tf.float32)
     volume = tf.reshape(
         volume_1d,
@@ -37,9 +24,6 @@ def example_to_tensor(example, with_label=False):
             volume_features["chn"],
         ),
     )
-    if with_label:
-        label = volume_features["label"]
-        return volume, label
     return volume
 
 
@@ -66,7 +50,7 @@ def example_to_labeled_volume(example):
         ),
     )
     label = volume_features["label"]
-    label = tf.cast(label, tf.uint16)
+    label = tf.cast(label, tf.uint8)
     return volume, [label]
 
 

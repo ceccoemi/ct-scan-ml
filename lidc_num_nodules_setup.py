@@ -7,7 +7,7 @@ import tensorflow as tf
 from scipy import ndimage
 from tqdm import tqdm
 
-from utils import read_dcm, volume_to_example
+from utils import read_dcm, volume_to_labeled_example
 from config import (
     LIDC_TOT_NUM_NODULES_TFRECORD,
     LIDC_NUM_BIG_NODULES_TFRECORD,
@@ -82,9 +82,13 @@ def main():
             )[0]
             scan = read_dcm(dcm_dir)
             scan = preprocess_scan(scan)
-            tot_scan_example = volume_to_example(scan, label=row.total_nodules)
+            tot_scan_example = volume_to_labeled_example(
+                scan, label=row.total_nodules
+            )
             tot_writer.write(tot_scan_example.SerializeToString())
-            big_scan_example = volume_to_example(scan, label=row.big_nodules)
+            big_scan_example = volume_to_labeled_example(
+                scan, label=row.big_nodules
+            )
             big_writer.write(big_scan_example.SerializeToString())
 
 

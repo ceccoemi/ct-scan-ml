@@ -1,3 +1,3 @@
 # ct-scan-ml
 
-Machine Learning applied to CT scans.
+Deep Learning models applied to 3D CT scans.
